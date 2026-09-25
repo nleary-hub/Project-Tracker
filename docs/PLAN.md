@@ -50,6 +50,8 @@ exists to feed it accurate data.
 | D26 | Dragging while sorted | Dragging a row turns sorting off and saves the current order as the new manual order, with your move applied. An Undo notice appears |
 | D27 | Department grouping | Dragging a project into another department asks for confirmation first. Departments themselves can be dragged; their order sets the order of report sections |
 | D28 | Row height | Compact / Default / Comfortable presets, plus dragging any row's bottom edge to set the height for all rows. Double-click the edge to fit the tallest text |
+| D29 | Hide from report | Admins can hide a project from reports, either until they turn it back on or for a single draft only. Non-admins can't see the control, the flag or that anything was hidden, and the database enforces this (see §6) |
+| D30 | Live layout updates | Deferred to v1.1: shared layout changes will appear instantly for everyone via Supabase Realtime (see §15) |
 
 ## 3. Stack
 
@@ -115,6 +117,14 @@ All tables carry `workspace_id` and are protected by RLS through an
 - **reports** — `period_start`, `period_end`, `status` (draft | approved | sent | discarded),
   `trigger` (scheduled | manual), `generated_by`, `approved_by`, `sent_at`,
   `snapshot` jsonb (the full, fixed report data), `generated_at`
+- **report_exclusions** (admin-only) — `project_id`, `report_id` (null = hidden until turned
+  back on; set = hidden from that one draft only), `reason` (optional), `created_by`, `created_at`.
+  The RLS policy grants **select, insert and delete to admins and owners only**, so members get
+  no rows back even if they query the table directly. It is a separate table, not a column on
+  `projects`, so the flag never appears in data members can read.
+- **reports.excluded** (admin-only) — the list of projects left out of each snapshot, kept in a
+  separate `report_exclusion_log` table under the same admin-only policy. Nothing about
+  exclusions is stored in the snapshot JSON that members can read.
 - **email_log** — `kind` (report | reminder), `to`, `report_id`, `status`, `error`, `sent_at`
 
 ## 5. Health rules
@@ -160,6 +170,27 @@ instead of a health rating.
 
 Every export reads from the **snapshot**, so re-downloading an old report gives exactly
 what was sent.
+
+**Hiding a project from the report (admins only)**
+- **How admins hide one:** from the project's ⋯ menu (or an admin-only **In report** toggle
+  column in the projects table) choose **Hide from reports**. It stays hidden until turned
+  back on. In a draft's review screen there is also **Remove from this report only**. Either
+  way the admin can add an optional reason ("Confidential until board approval").
+- **Effect:** the project is left out of every part of the report: department sections,
+  portfolio counts, report charts, the health trend (snapshots never include it), PDF, Excel,
+  CSV and email.
+- **Admins see:** a small "hidden from report" icon on the project, and a collapsed
+  "Hidden from this report (2)" list at the bottom of the report (in-app only, never
+  exported), where each project can be restored in one click. Hiding and restoring are
+  recorded in an admin-only audit log, not the activity feed.
+- **Non-admins see nothing:** no menu item, no column, no icon, no gap in the report, and
+  totals that add up. The live (non-report) dashboard and projects list still show the
+  project normally to anyone who can see it; only reports leave it out.
+- **Enforced by the database, not just hidden in the interface:** the report
+  builder reads exclusions with admin-level access on the server, and members can't read
+  the exclusions tables at all (RLS tests in M6 prove this).
+- The owner still gets the usual update reminders, so the project stays tracked and a
+  reminder doesn't reveal that it was hidden.
 
 **Layouts** (a report setting):
 - **Dense table** (default): one row per project. Columns are Project · Owner · Health · Δ ·
@@ -287,7 +318,7 @@ A single shared `DataTable` component provides all of it, so every table behaves
   exports. Column widths are scaled to fit the page. Every snapshot saves the order it was
   generated with.
 - Other people see a shared change the next time the page refreshes, or when they switch back
-  to its tab. Live updates between users remain out of scope.
+  to its tab. Instant updates between users are planned for v1.1 (§15).
 
 **Phones:** sorting and filtering happen in a "Sort & filter" panel. Dragging and resizing are
 desktop-only. The dense table becomes cards (see §7).
@@ -329,6 +360,7 @@ attempt is recorded in `email_log`.
 | Move a project to another department | – | ✓ (own projects) | ✓ |
 | Reorder departments; change layout-sharing mode | – | – | ✓ |
 | Generate, approve and send reports | – | – | ✓ |
+| Hide a project from reports (control not shown to others) | – | – | ✓ |
 
 ## 11. Screens
 
@@ -351,7 +383,7 @@ attempt is recorded in `email_log`.
 | M3 | **Interactive tables**: `DataTable` component (header sort and filters, filter chips, filters and sort in the URL), row and column drag with animations and insertion marker, cross-department confirm, department drag, column resize, row-height presets and drag, Undo, keyboard drag; `rank` ordering, `table_layouts`, three sharing modes. Applied to the projects list | Playwright drag tests (row, column, cross-department, Esc cancel, keyboard) pass; order survives a reload; each sharing mode verified with two users |
 | M4 | Tasks + activity events (database triggers), using `DataTable` | Task changes produce activity rows |
 | M5 | Project updates + health engine + override + in-app banner | Unit tests cover every health rule and the override expiry |
-| M6 | Reports: snapshot generation, in-app report view (dense table + detailed cards), history, live preview, **Generate now**; the four charts + on/off settings on the dashboard and report | A snapshot matches the live data at generation time; old snapshots don't change; charts match their table views |
+| M6 | Reports: snapshot generation, in-app report view (dense table + detailed cards), history, live preview, **Generate now**; admin-only hide from report (until turned back on, or this draft only) + audit log; the four charts + on/off settings on the dashboard and report | A snapshot matches the live data at generation time; old snapshots don't change; charts match their table views; RLS tests prove a member can't read exclusions, and hidden projects never appear in a snapshot or its exports |
 | M7 | Exports: PDF (with charts, branding, both layouts), Excel, CSV | All three open correctly and match the snapshot; the PDF is readable when printed in black and white |
 | M8 | Email + scheduling: Gmail SMTP provider, daily cron, reminders, draft/approve/auto-send, email log | A dry run for a simulated report day sends the correct emails exactly once |
 | M9 | Hardening: empty and error states, phone layout check, Playwright end-to-end run (sign in → project → update → report → export), weekly database backup, production deploy | Production URL live with demo data loaded |
@@ -372,11 +404,25 @@ attempt is recorded in `email_log`.
 
 ## 14. Out of scope for v1
 
-Live multi-user updates of shared layouts, Kanban board, Gantt/timeline planning view (the milestone timeline chart is in scope), time and budget tracking, comments, attachments, realtime
-updates, department-level access restrictions, per-department email distribution, and
+Kanban board, Gantt/timeline planning view (the milestone timeline chart is in scope),
+time and budget tracking, comments, attachments, department-level access restrictions, per-department email distribution, and
 AI-written summaries. The schema doesn't block any of these.
 
-## 15. Open items
+## 15. Later versions (roadmap)
+
+**v1.1 — committed**
+- **Live updates to shared layouts:** use Supabase Realtime so that when anyone reorders
+  rows or columns, resizes, or changes the shared sort, every open copy of that table updates
+  within about a second. The change animates the same way a drag does, and a brief "R. Lee
+  moved ERP upgrade" notice appears. If someone else changes the layout while you are
+  mid-drag, your drag finishes first, then the incoming change is applied on top. v1 is
+  built with this in mind: every layout change is already one saved row with `updated_by`,
+  so v1.1 only adds a subscription, not a data change.
+- Live updates to data changes (tasks, updates, health), using the same mechanism.
+
+**Later — candidates, not committed:** everything in §14.
+
+## 16. Open items
 
 None blocking. Defaults, all changeable in settings:
 - First report: the first Friday at least 7 days after the production launch. Draft at
