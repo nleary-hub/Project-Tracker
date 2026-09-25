@@ -12,54 +12,56 @@ has been done and what is set up outside the repo.
   Next.js 16 + Tailwind v4 + shadcn/ui (base-nova, Base UI), executive theme tokens,
   `HealthBadge`, app shell with phone menu, placeholder pages, Vitest, Prettier,
   GitHub Actions CI, Supabase CLI config.
-- **M1 complete** on branch `m1/auth-workspaces` (branched from the M0 tip, so it applies
-  cleanly once PR #1 is merged):
-  - Migration `supabase/migrations/20260925035135_workspaces.sql` — `profiles` (kept in sync
-    from `auth.users` by trigger), `workspaces`, `workspace_members` (one owner per
-    workspace), `workspace_invites` (single-use links, 7-day expiry), `departments`
-    (fractional `rank`), `workspace_settings` (`layout_sharing`); `is_workspace_member()`,
-    `workspace_role()`, `is_workspace_admin()`, `shares_workspace_with()` helpers; RPCs
-    `create_workspace()`, `invite_preview()`, `accept_invite()`; RLS on every table; `anon`
-    revoked. **Already applied to the hosted project** (version `20260925035135`).
+- **M1 complete** on branch `m1/auth-workspaces` (pushed; PR not yet opened):
+  - Migration `20260925035135_workspaces.sql` — `profiles` (kept in sync from `auth.users`
+    by trigger), `workspaces`, `workspace_members` (one owner per workspace),
+    `workspace_invites` (single-use links, 7-day expiry), `departments` (fractional `rank`),
+    `workspace_settings` (`layout_sharing`); `is_workspace_member()`, `workspace_role()`,
+    `is_workspace_admin()`, `shares_workspace_with()` helpers; RPCs `create_workspace()`,
+    `invite_preview()`, `accept_invite()`; RLS on every table; `anon` revoked.
   - Google sign-in flow (`/login` → `signInWithOAuth` → `/auth/callback` → PKCE exchange),
     `src/proxy.ts` refreshes the session cookie and redirects signed-out visitors to
     `/login?next=…`, `src/lib/auth/dal.ts` centralizes `getUser` / `requireWorkspace` /
     `requireWorkspaceAdmin` (non-members get a 404).
-  - `/onboarding` (create workspace, slug auto-suggested), `/invite/[token]` (preview +
-    accept, with expired / revoked / used / already-member states), account menu with
-    workspace switcher and sign-out, workspace name in the header.
-  - `/w/[slug]/settings`: workspace name, members (role select, remove, leave), invite
-    links (create + copy, revoke, status), departments (add, rename, archive, restore),
-    layout-sharing mode. Members see a read-only version with no invite section.
-  - Tests: Vitest units (slug, rank, roles, invites, initials, nav) and
-    `supabase/tests/database/rls.test.sql` (pgTAP, 21 checks) run by the new `database`
-    CI job via `supabase test db`. The same assertions were run against the hosted project
-    inside a rolled-back transaction and all passed.
-  - Verified in the browser end to end with two throwaway accounts: create workspace →
-    add departments → create invite → second user accepts → member sees read-only
-    settings → sign out. Throwaway accounts and the test workspace were deleted afterwards.
+  - `/onboarding`, `/invite/[token]`, account menu with workspace switcher and sign-out,
+    `/w/[slug]/settings` (workspace name, members, invite links, departments, layout
+    sharing; read-only for members).
+  - Tests: Vitest units and `supabase/tests/database/rls.test.sql` (pgTAP) run by the
+    `database` CI job.
+- **M2 complete** on branch `m2/projects-milestones` (branched from the M1 tip):
+  - Migration `20260925120627_projects_milestones.sql` — `projects` (department, owner,
+    status, dates, health-override columns for M5, `rank`, `is_demo`), `milestones`
+    (`workspace_id` copied from the project by trigger, `rank`, `is_demo`),
+    `departments.is_demo`; `can_edit_project()` helper (owner or admin); `wipe_demo_data()`
+    RPC (admin-only, atomic, removes exactly the demo rows); RLS: members read and create
+    projects, owner/admin edit and delete them and manage milestones. Check constraints:
+    due ≥ start, department must belong to the workspace, an override needs a reason.
+  - `/w/[slug]/projects`: grouped by department (rank order), URL-driven filters
+    (department, owner, status), next open milestone per project with overdue flagged,
+    empty states for "no departments" and "no projects". `/projects/new`, `/projects/[id]`
+    (details, milestones with complete/reopen, add, edit, delete; "Next" badge on the
+    earliest open milestone), `/projects/[id]/edit`, delete via the ⋯ menu.
+  - Settings → **Demo data**: load 12 sample projects across Marketing / Operations /
+    Product / Finance with dated milestones (overdue, imminent, comfortable); wipe.
+  - Shared helpers: `src/lib/milestones.ts` (`nextMilestone`, `sortForDisplay`,
+    `isOverdue`), `src/lib/projects.ts` (status vocabulary, timezone-safe date maths),
+    `src/lib/schemas/project.ts` (Zod, shared by forms and actions), `src/lib/data/*`
+    (typed queries), `src/lib/demo-data.ts` (the sample portfolio).
+  - Tests: Vitest units (milestones, dates, schemas, demo data, formatting) and
+    `supabase/tests/database/projects.test.sql` (pgTAP, 14 checks). The same assertions
+    were run against the hosted project inside a rolled-back transaction and all passed.
+  - Verified in the browser with throwaway accounts: load demo data → list + filters →
+    project page → complete a milestone, add one → create a project (validation error
+    keeps typed values) → member view has no edit controls but can create → delete.
 
 ## External services (all $0 plans)
 
-| Service            | Details                                                                                                                                                                                                                                                                                              |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Supabase           | Project `project-tracker`, ref `gmnomcketaofqypwlwxq`, region `us-east-1`, free plan, org "nleary-hub's Org". M1 schema applied. URL + publishable key live in `.env.local` (gitignored) and in Vercel env vars.                                                                                     |
-| Vercel             | Project `project-tracker` (Hobby), linked to `nleary-hub/Project-Tracker`. `main` = production; every branch push gets a preview. Preview protection is on (sign in to Vercel to view). Env vars `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set for all environments. |
-| Google OAuth       | **Not set up yet — the "Continue with Google" button fails until it is.** See below.                                                                                                                                                                                                                 |
-| Email (Gmail SMTP) | Not set up yet. Needed in M8.                                                                                                                                                                                                                                                                        |
-
-### Turning on Google sign-in (one-time, ~10 minutes)
-
-1. Google Cloud Console → APIs & Services → Credentials → **Create credentials → OAuth client ID**
-   (configure the consent screen first if asked: External, app name "Project Tracker", your
-   email as support/developer contact; add yourself as a test user while it's unpublished).
-2. Application type **Web application**. Authorized redirect URI:
-   `https://gmnomcketaofqypwlwxq.supabase.co/auth/v1/callback`
-3. Copy the client ID and secret into Supabase → Authentication → Sign In / Providers →
-   **Google** → enable, paste both, save.
-4. Supabase → Authentication → URL Configuration: set **Site URL** to the production URL and add
-   `http://localhost:3000/**` and the Vercel preview pattern `https://*-nleary-hub.vercel.app/**`
-   to **Redirect URLs**.
+| Service            | Details                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supabase           | Project `project-tracker`, ref `gmnomcketaofqypwlwxq`, region `us-east-1`, free plan, org "nleary-hub's Org". M1 + M2 migrations applied. URL + publishable key live in `.env.local` (gitignored) and in Vercel env vars. `.mcp.json` registers the Supabase MCP server for Claude Code sessions.                                                           |
+| Vercel             | Project `project-tracker` (Hobby), linked to `nleary-hub/Project-Tracker`. `main` = production; every branch push gets a preview. Preview protection is on (sign in to Vercel to view). Env vars `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set for all environments.                                                        |
+| Google OAuth       | Provider is **enabled in Supabase** with a Google client ID, but Google still returns `redirect_uri_mismatch`: add `https://gmnomcketaofqypwlwxq.supabase.co/auth/v1/callback` to the OAuth client's **Authorized redirect URIs** in Google Cloud Console, and `http://localhost:3000/**` to Supabase → Authentication → URL Configuration → Redirect URLs. |
+| Email (Gmail SMTP) | Not set up yet. Needed in M8.                                                                                                                                                                                                                                                                                                                               |
 
 ## Local development
 
@@ -70,14 +72,22 @@ has been done and what is set up outside the repo.
 - `pnpm dev` → http://localhost:3000. `pnpm check` (lint, format, typecheck, tests),
   `pnpm build`.
 - After any migration: apply it to the hosted project (Supabase MCP `apply_migration` or
-  `supabase db push`), then regenerate `src/lib/supabase/database.types.ts`.
+  `supabase db push`), rename the local file to the version Supabase recorded, then
+  regenerate `src/lib/supabase/database.types.ts`.
+- Google sign-in isn't usable locally until the redirect URI above is fixed. For UI checks,
+  throwaway email/password users can be created with SQL (`extensions.crypt`), signed in
+  headlessly with `@supabase/ssr`, and their `sb-<ref>-auth-token` cookie injected into the
+  browser. Delete them afterwards.
 
 ## Recommended next step
 
-Merge PR #1, open a PR for `m1/auth-workspaces` and merge it, set up Google sign-in (above),
-then start **M2** on a fresh branch from `main`: projects + milestones (CRUD, owner,
-department), the projects list grouped by department, next-milestone calculation, demo-data
-loader + wipe (`is_demo` rows). See PLAN §12.
+Open and merge PRs for `m1/auth-workspaces` and `m2/projects-milestones` (after PR #1),
+fix the Google redirect URI, then start **M3 — interactive tables** on a fresh branch from
+`main`: the shared `DataTable` (TanStack Table + dnd-kit) with header sort/filter, filter
+chips, filters and sort in the URL, row and column drag with animation and insertion marker,
+cross-department confirm, department drag, column resize, row-height presets, Undo, keyboard
+drag; `table_layouts` / `user_row_ranks` / `user_table_filters` tables and the three sharing
+modes. Apply it to the projects list first (PLAN §8, §12).
 
 ## Conventions
 
@@ -87,7 +97,11 @@ loader + wipe (`is_demo` rows). See PLAN §12.
   shadcn's hover surface). When shadcn asks to overwrite an existing file, keep ours.
 - Base UI components use `render={<Link … />}` instead of `asChild`; add `nativeButton={false}`
   when a `Button` renders as a link.
-- Server Actions return `ActionResult` (`src/lib/action-result.ts`); pages and actions go
-  through `src/lib/auth/dal.ts`; the database enforces the same rules with RLS.
+- Forms that can fail server-side validation use controlled inputs (React resets uncontrolled
+  fields after every form action). Server Actions return `ActionResult`
+  (`src/lib/action-result.ts`); pages and actions go through `src/lib/auth/dal.ts`; the
+  database enforces the same rules with RLS.
+- `date` columns are `YYYY-MM-DD` strings: format them with `formatDate` (which treats them as
+  calendar dates), never `new Date(value)` in the workspace timezone.
 - Health colors (`--health-*`) are reserved for health and always paired with shape + label.
 - One PR per milestone; keep `docs/PLAN.md` updated when a decision changes.
