@@ -23,7 +23,7 @@ exists to feed it accurate data.
 | # | Decision | Choice |
 |---|---|---|
 | D1 | Users | Small team, invited by link |
-| D2 | Sign-in | Google OAuth via Supabase Auth; admins send copyable invite links (no invite emails) |
+| D2 | Sign-in | Google OAuth via Supabase Auth; admins send copyable invite links (no invite emails). Each link admits one person, expires after 7 days and can be revoked |
 | D3 | Tenancy | Schema supports multiple workspaces; the interface exposes one workspace in v1 |
 | D4 | Stack | Next.js (App Router, TypeScript) + Supabase + Vercel Hobby |
 | D5 | Hosting cost | $0: Supabase free plan, Vercel Hobby (non-commercial use confirmed) |
