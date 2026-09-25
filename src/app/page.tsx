@@ -1,8 +1,13 @@
 import { redirect } from "next/navigation";
 
-import { PREVIEW_WORKSPACE_SLUG } from "@/lib/app-config";
+import { getMyWorkspaces, getUser } from "@/lib/auth/dal";
 
-// Sign-in and workspace selection replace this redirect in M1.
-export default function Home() {
-  redirect(`/w/${PREVIEW_WORKSPACE_SLUG}`);
+/** Sends the visitor to sign-in, onboarding, or their workspace. */
+export default async function Home() {
+  const user = await getUser();
+  if (!user) redirect("/login");
+
+  const workspaces = await getMyWorkspaces();
+  if (workspaces.length === 0) redirect("/onboarding");
+  redirect(`/w/${workspaces[0].slug}`);
 }
