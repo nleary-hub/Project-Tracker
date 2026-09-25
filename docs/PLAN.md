@@ -45,6 +45,11 @@ exists to feed it accurate data.
 | D21 | Report day | Friday. The reminder goes out Thursday |
 | D22 | Report layout | Default "Dense table" (for 25–100 projects); can be switched in settings to "Detailed cards" (for under 25) |
 | D23 | Seed data | Demo data to try the app, plus an admin "wipe demo data" action before real use |
+| D24 | Interactive tables | Sort and filter from column headers; drag rows and columns to reorder, with animation; resize column widths and row height (see §8) |
+| D25 | Layout sharing | Default **everything shared**. An admin can switch to *split* (row order shared, everything else per person) or *everything personal*. Filters are always per person (see §8) |
+| D26 | Dragging while sorted | Dragging a row turns sorting off and saves the current order as the new manual order, with your move applied. An Undo notice appears |
+| D27 | Department grouping | Dragging a project into another department asks for confirmation first. Departments themselves can be dragged; their order sets the order of report sections |
+| D28 | Row height | Compact / Default / Comfortable presets, plus dragging any row's bottom edge to set the height for all rows. Double-click the edge to fit the tallest text |
 
 ## 3. Stack
 
@@ -55,6 +60,8 @@ exists to feed it accurate data.
 | Data / Auth | Supabase Postgres + Auth (Google), with Row Level Security (RLS) on every table |
 | Validation | Zod, shared between forms and server actions |
 | PDF | `@react-pdf/renderer` (no headless browser needed, fits serverless limits) |
+| Tables | TanStack Table (sorting, filtering, column order, sizing, visibility) with virtualized rows via TanStack Virtual |
+| Drag & drop | dnd-kit (pointer, touch and keyboard sensors, screen-reader announcements) + its sortable/animation utilities |
 | Charts | Custom SVG components with `d3-scale`. The chart layout code is shared by the web page and the PDF, so the two can't drift apart (see §7) |
 | Excel | `exceljs` |
 | Email | Nodemailer over Gmail SMTP, behind an `EmailProvider` interface |
@@ -91,6 +98,17 @@ All tables carry `workspace_id` and are protected by RLS through an
   `at_risk_window_days` (default 7), `staleness_counts_toward_health` (default true),
   `layout` (dense_table | detailed_cards, default dense_table),
   `charts` jsonb: on/off for each chart on each screen (see §7); all on by default
+- **Ordering:** `departments`, `projects`, `milestones` and `tasks` each carry a `rank` text column
+  (fractional index). Moving a row updates only that one row, so concurrent moves don't
+  rewrite a whole list.
+- **table_layouts** — `workspace_id`, `user_id` (null = shared), `table_key`
+  (projects | tasks | milestones | report), `column_order` text[], `column_widths` jsonb,
+  `hidden_columns` text[], `sort` jsonb, `density` (compact | default | comfortable),
+  `row_height_px`, `updated_by`, `updated_at`
+- **user_row_ranks** — `user_id`, `table_key`, `row_id`, `rank`. Only used in
+  *everything personal* mode.
+- **user_table_filters** — `user_id`, `table_key`, `filters` jsonb. Always per person.
+- **workspace_settings.layout_sharing** — shared | split | personal (default shared).
 - **workspace_branding** — `logo_path` (Supabase Storage), `accent_color`, `display_name`
 - Demo rows carry `is_demo = true` on projects, departments, milestones, tasks and updates, so
   "wipe demo data" deletes exactly those rows and nothing real.
@@ -194,7 +212,87 @@ draws the health bars as simple HTML table cells, and the full charts are in the
 stacked card per project; charts stretch to full width. Project and report settings, and
 bulk task editing, are desktop-only in v1.
 
-## 8. Scheduling and reminders
+## 8. Interactive tables
+
+Applies to the **projects list, task tables, milestone lists and the in-app report table**.
+A single shared `DataTable` component provides all of it, so every table behaves the same.
+
+**Sorting and filtering from the column headers**
+- Click a header to sort ascending, again for descending, a third time to clear. Shift-click
+  adds a second (and third) sort level. The header shows ▲ / ▼, and a small 1, 2, 3 for
+  sort levels.
+- Each header has a ⋯ menu: sort, filter, hide column, reset width.
+- Filters depend on the column type. Text: *contains*. Status, health, owner and department:
+  pick one or more values, each with its count. Dates: a range picker plus presets
+  (*Overdue*, *This week*, *Next 30 days*, *No date*).
+- Active filters appear as chips above the table ("Health: At risk, Off track ✕") with
+  **Clear all**. A filtered column's header shows a filled funnel icon.
+- The current filters and sort are kept in the page URL, so a filtered view can be
+  bookmarked or shared as a link.
+- Filters are **always per person**, whatever the sharing mode. Otherwise one person
+  filtering to Marketing would hide every other department from everyone. Sorting follows
+  the sharing mode.
+
+**Drag to reorder rows and columns**
+- Rows have a ⠿ handle on hover. Column headers are dragged by the header itself.
+- **While dragging:** the item lifts slightly (shadow, 2% scale) and follows the pointer as a
+  translucent copy. Its original place shows a dashed outline. Other rows or columns slide
+  aside smoothly (about 180 ms) to open a gap where it will land.
+- **Insertion marker:** a 2 px accent-colored line with an end dot marks exactly where the
+  item will be inserted, e.g. "between ERP upgrade and Q4 campaign". For columns, the line is
+  vertical and runs the full height of the table.
+- **Across departments:** the target department's header highlights and shows
+  "Move to Marketing". Dropping there opens a confirmation dialog. Cancelling animates the
+  row back to where it started.
+- **Departments:** drag a department header to move the whole group. Its projects collapse
+  into a single bar while dragging, so the move stays readable.
+- **Drop:** the item settles into place with a short ease-out. The move is saved immediately
+  (the screen updates at once and rolls back if saving fails), and an **Undo** notice shows
+  for 8 seconds.
+- The table scrolls automatically when you drag near its top or bottom edge. **Esc** cancels
+  a drag.
+- **Keyboard:** focus a handle, press Space to pick up, use the arrow keys to move, Space
+  to drop, Esc to cancel. A screen reader announces each position ("Position 3 of 12 in
+  Operations").
+- If the operating system is set to reduce motion, animations are turned off, and the
+  insertion marker still shows.
+- **Dragging while sorted:** turns sorting off, keeps the order currently shown, and applies
+  your move (see D26).
+- **Dragging while filtered:** the move is placed relative to the rows you can see, and hidden
+  rows keep their positions.
+
+**Resizing**
+- **Columns:** drag the right edge of a header (the cursor changes when you're over it; a
+  guide line follows the drag). Double-click the edge to fit the widest content. Each column
+  has a minimum width so none can collapse to nothing.
+- **Rows:** Compact / Default / Comfortable presets in the table toolbar, or drag any row's
+  bottom edge to set one height for all rows. Double-click the edge to fit the tallest content.
+- **Reset layout** in the toolbar restores the default columns, widths and height.
+
+**Who sees what** (`layout_sharing`, set by an admin; the default is *shared*):
+
+| | Row order | Column order, widths, hidden columns, row height | Sort | Filters |
+|---|---|---|---|---|
+| **Shared** (default) | everyone | everyone | everyone | per person |
+| **Split** | everyone | per person | per person | per person |
+| **Personal** | per person | per person | per person | per person |
+
+- In *shared* mode any member can change the layout, and the change applies to everyone.
+  Each change records who made it, and the toolbar shows "Layout last changed by R. Lee, 2m ago".
+- Only admins can reorder departments (it's department management). Moving a project
+  between departments follows the project-edit permission (its owner or an admin).
+- **The report** always uses the **shared** department and project order: in personal
+  mode, the order admins set (from shared mode, or the admin "Shared order" view). The
+  in-app report table's column order and hidden columns also apply to the PDF and Excel
+  exports. Column widths are scaled to fit the page. Every snapshot saves the order it was
+  generated with.
+- Other people see a shared change the next time the page refreshes, or when they switch back
+  to its tab. Live updates between users remain out of scope.
+
+**Phones:** sorting and filtering happen in a "Sort & filter" panel. Dragging and resizing are
+desktop-only. The dense table becomes cards (see §7).
+
+## 9. Scheduling and reminders
 
 Vercel Hobby allows scheduled (cron) jobs at most **once a day**, and a job may fire at any
 point within its scheduled hour. One daily job does the following:
@@ -217,7 +315,7 @@ saved as a draft by default and can then be approved and sent.
 The sending job is idempotent: a report with status `sent` is never re-sent, and every send
 attempt is recorded in `email_log`.
 
-## 9. Roles and permissions
+## 10. Roles and permissions
 
 | Action | Member | Project owner | Admin / Owner |
 |---|---|---|---|
@@ -227,9 +325,12 @@ attempt is recorded in `email_log`.
 | Edit a project, its milestones, or override health | – | ✓ (own projects) | ✓ |
 | Create projects | ✓ | ✓ | ✓ |
 | Manage departments, members, invites, report settings | – | – | ✓ |
+| Reorder rows, columns, widths (shared mode) | ✓ | ✓ | ✓ |
+| Move a project to another department | – | ✓ (own projects) | ✓ |
+| Reorder departments; change layout-sharing mode | – | – | ✓ |
 | Generate, approve and send reports | – | – | ✓ |
 
-## 10. Screens
+## 11. Screens
 
 1. `/login` — Google sign-in
 2. `/onboarding` — create the workspace, or accept an invite link
@@ -238,23 +339,24 @@ attempt is recorded in `email_log`.
 5. `/w/[slug]/projects/[id]` — overview (health, next milestone), updates feed + "Post update", milestones, tasks, activity
 6. `/w/[slug]/reports` — list of past snapshots, **Generate now**, live preview
 7. `/w/[slug]/reports/[id]` — report view, approve & send, download PDF / Excel / CSV
-8. `/w/[slug]/settings` — members & invites, departments, report settings (schedule, mode, recipients, thresholds, layout), charts (on/off for each screen), branding (logo, accent color), demo data (load / wipe)
+8. `/w/[slug]/settings` — members & invites, departments, report settings (schedule, mode, recipients, thresholds, layout), charts (on/off for each screen), branding (logo, accent color), demo data (load / wipe), layout-sharing mode
 
-## 11. Milestones (one PR each)
+## 12. Milestones (one PR each)
 
 | # | Scope | Done when |
 |---|---|---|
 | M0 | Scaffold: Next.js, Tailwind/shadcn, lint/format/typecheck, Vitest, CI, Supabase migrations setup, Vercel + Supabase projects created; design tokens (colors, type, health badges) + app shell (header, nav, phone menu) | CI green; the app shell deploys to a Vercel preview |
 | M1 | Auth + workspace + members + invite links + departments; RLS helpers | Google sign-in works; RLS tests prove a non-member sees nothing |
 | M2 | Projects + milestones (CRUD, owner, department); demo data loader + wipe | Projects list grouped by department; the next milestone is calculated; wiping removes only demo rows |
-| M3 | Tasks + activity events (database triggers) | Task changes produce activity rows; filters and sorting work |
-| M4 | Project updates + health engine + override + in-app banner | Unit tests cover every health rule and the override expiry |
-| M5 | Reports: snapshot generation, in-app report view (dense table + detailed cards), history, live preview, **Generate now**; the four charts + on/off settings on the dashboard and report | A snapshot matches the live data at generation time; old snapshots don't change; charts match their table views |
-| M6 | Exports: PDF (with charts, branding, both layouts), Excel, CSV | All three open correctly and match the snapshot; the PDF is readable when printed in black and white |
-| M7 | Email + scheduling: Gmail SMTP provider, daily cron, reminders, draft/approve/auto-send, email log | A dry run for a simulated report day sends the correct emails exactly once |
-| M8 | Hardening: empty and error states, phone layout check, Playwright end-to-end run (sign in → project → update → report → export), weekly database backup, production deploy | Production URL live with demo data loaded |
+| M3 | **Interactive tables**: `DataTable` component (header sort and filters, filter chips, filters and sort in the URL), row and column drag with animations and insertion marker, cross-department confirm, department drag, column resize, row-height presets and drag, Undo, keyboard drag; `rank` ordering, `table_layouts`, three sharing modes. Applied to the projects list | Playwright drag tests (row, column, cross-department, Esc cancel, keyboard) pass; order survives a reload; each sharing mode verified with two users |
+| M4 | Tasks + activity events (database triggers), using `DataTable` | Task changes produce activity rows |
+| M5 | Project updates + health engine + override + in-app banner | Unit tests cover every health rule and the override expiry |
+| M6 | Reports: snapshot generation, in-app report view (dense table + detailed cards), history, live preview, **Generate now**; the four charts + on/off settings on the dashboard and report | A snapshot matches the live data at generation time; old snapshots don't change; charts match their table views |
+| M7 | Exports: PDF (with charts, branding, both layouts), Excel, CSV | All three open correctly and match the snapshot; the PDF is readable when printed in black and white |
+| M8 | Email + scheduling: Gmail SMTP provider, daily cron, reminders, draft/approve/auto-send, email log | A dry run for a simulated report day sends the correct emails exactly once |
+| M9 | Hardening: empty and error states, phone layout check, Playwright end-to-end run (sign in → project → update → report → export), weekly database backup, production deploy | Production URL live with demo data loaded |
 
-## 12. Constraints and risks
+## 13. Constraints and risks
 
 - **Gmail SMTP:** about 500 recipients a day, and mail is sent from your personal address.
   Needs a Google **app password** (requires 2-step verification), stored only as a
@@ -264,17 +366,17 @@ attempt is recorded in `email_log`.
   moving to Pro removes both limits.
 - **Supabase free plan:** 500 MB database, and projects pause after 7 days without activity.
   The daily cron job prevents pausing. There's no automatic backup on the free plan, so
-  a weekly `pg_dump` via GitHub Actions is added in M8.
+  a weekly `pg_dump` via GitHub Actions is added in M9.
 - **Update discipline:** report quality depends on owners posting updates. The reminders,
   the banner and the staleness → at-risk rule are the counter-measures.
 
-## 13. Out of scope for v1
+## 14. Out of scope for v1
 
-Kanban board, Gantt/timeline planning view (the milestone timeline chart is in scope), time and budget tracking, comments, attachments, realtime
+Live multi-user updates of shared layouts, Kanban board, Gantt/timeline planning view (the milestone timeline chart is in scope), time and budget tracking, comments, attachments, realtime
 updates, department-level access restrictions, per-department email distribution, and
 AI-written summaries. The schema doesn't block any of these.
 
-## 14. Open items
+## 15. Open items
 
 None blocking. Defaults, all changeable in settings:
 - First report: the first Friday at least 7 days after the production launch. Draft at
