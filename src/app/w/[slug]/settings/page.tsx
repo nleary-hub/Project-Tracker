@@ -13,6 +13,7 @@ import { AddDepartmentForm, DepartmentList, type DepartmentRow } from "./departm
 import { InvitesTable, NewInviteDialog, type InviteRow } from "./invites-panel";
 import { LayoutSharingForm } from "./layout-sharing-form";
 import { MembersTable, type MemberRow } from "./members-table";
+import { DemoDataPanel } from "./demo-data-panel";
 import { WorkspaceNameForm } from "./workspace-name-form";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -30,6 +31,7 @@ const SECTIONS = [
   { id: "invites", label: "Invite links", adminOnly: true },
   { id: "departments", label: "Departments" },
   { id: "layout", label: "Layout sharing" },
+  { id: "demo", label: "Demo data", adminOnly: true },
   { id: "reports", label: "Reports & branding" },
 ];
 
@@ -113,6 +115,16 @@ export default async function SettingsPage({ params }: PageProps<"/w/[slug]/sett
   }));
 
   const layoutMode = settingsRes.data?.layout_sharing ?? "shared";
+
+  let demoProjects = 0;
+  if (isAdmin) {
+    const { count } = await supabase
+      .from("projects")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspace.id)
+      .eq("is_demo", true);
+    demoProjects = count ?? 0;
+  }
   const sections = SECTIONS.filter((s) => !s.adminOnly || isAdmin);
 
   return (
@@ -214,6 +226,16 @@ export default async function SettingsPage({ params }: PageProps<"/w/[slug]/sett
                 <LayoutSharingForm slug={workspace.slug} mode={layoutMode} isAdmin={isAdmin} />
               </div>
             </SettingsSection>
+
+            {isAdmin && (
+              <SettingsSection
+                id="demo"
+                title="Demo data"
+                description="Try the tracker with a realistic sample portfolio, then wipe it before real use. Only demo rows are removed."
+              >
+                <DemoDataPanel slug={workspace.slug} demoProjects={demoProjects} />
+              </SettingsSection>
+            )}
 
             <SettingsSection
               id="reports"

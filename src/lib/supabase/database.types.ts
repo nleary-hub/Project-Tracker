@@ -15,6 +15,7 @@ export type Database = {
           archived_at: string | null;
           created_at: string;
           id: string;
+          is_demo: boolean;
           name: string;
           rank: string;
           updated_at: string;
@@ -24,6 +25,7 @@ export type Database = {
           archived_at?: string | null;
           created_at?: string;
           id?: string;
+          is_demo?: boolean;
           name: string;
           rank: string;
           updated_at?: string;
@@ -33,6 +35,7 @@ export type Database = {
           archived_at?: string | null;
           created_at?: string;
           id?: string;
+          is_demo?: boolean;
           name?: string;
           rank?: string;
           updated_at?: string;
@@ -41,6 +44,63 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "departments_workspace_id_fkey";
+            columns: ["workspace_id"];
+            isOneToOne: false;
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      milestones: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          due_date: string | null;
+          id: string;
+          is_demo: boolean;
+          name: string;
+          owner_id: string | null;
+          project_id: string;
+          rank: string;
+          updated_at: string;
+          workspace_id: string;
+        };
+        Insert: {
+          completed_at?: string | null;
+          created_at?: string;
+          due_date?: string | null;
+          id?: string;
+          is_demo?: boolean;
+          name: string;
+          owner_id?: string | null;
+          project_id: string;
+          rank: string;
+          updated_at?: string;
+          workspace_id: string;
+        };
+        Update: {
+          completed_at?: string | null;
+          created_at?: string;
+          due_date?: string | null;
+          id?: string;
+          is_demo?: boolean;
+          name?: string;
+          owner_id?: string | null;
+          project_id?: string;
+          rank?: string;
+          updated_at?: string;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "milestones_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "milestones_workspace_id_fkey";
             columns: ["workspace_id"];
             isOneToOne: false;
             referencedRelation: "workspaces";
@@ -74,6 +134,81 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      projects: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          department_id: string;
+          description: string;
+          due_date: string | null;
+          health_override: Database["public"]["Enums"]["health_status"] | null;
+          health_override_expires_at: string | null;
+          health_override_reason: string | null;
+          id: string;
+          is_demo: boolean;
+          name: string;
+          owner_id: string | null;
+          rank: string;
+          start_date: string | null;
+          status: Database["public"]["Enums"]["project_status"];
+          updated_at: string;
+          workspace_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          department_id: string;
+          description?: string;
+          due_date?: string | null;
+          health_override?: Database["public"]["Enums"]["health_status"] | null;
+          health_override_expires_at?: string | null;
+          health_override_reason?: string | null;
+          id?: string;
+          is_demo?: boolean;
+          name: string;
+          owner_id?: string | null;
+          rank: string;
+          start_date?: string | null;
+          status?: Database["public"]["Enums"]["project_status"];
+          updated_at?: string;
+          workspace_id: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          department_id?: string;
+          description?: string;
+          due_date?: string | null;
+          health_override?: Database["public"]["Enums"]["health_status"] | null;
+          health_override_expires_at?: string | null;
+          health_override_reason?: string | null;
+          id?: string;
+          is_demo?: boolean;
+          name?: string;
+          owner_id?: string | null;
+          rank?: string;
+          start_date?: string | null;
+          status?: Database["public"]["Enums"]["project_status"];
+          updated_at?: string;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "projects_department_id_fkey";
+            columns: ["department_id"];
+            isOneToOne: false;
+            referencedRelation: "departments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "projects_workspace_id_fkey";
+            columns: ["workspace_id"];
+            isOneToOne: false;
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       workspace_invites: {
         Row: {
@@ -236,6 +371,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      can_edit_project: { Args: { p: string }; Returns: boolean };
       create_workspace: {
         Args: { p_name: string; p_slug: string };
         Returns: {
@@ -266,13 +402,22 @@ export type Database = {
       is_workspace_admin: { Args: { ws: string }; Returns: boolean };
       is_workspace_member: { Args: { ws: string }; Returns: boolean };
       shares_workspace_with: { Args: { other_user: string }; Returns: boolean };
+      wipe_demo_data: {
+        Args: { ws: string };
+        Returns: {
+          departments_removed: number;
+          projects_removed: number;
+        }[];
+      };
       workspace_role: {
         Args: { ws: string };
         Returns: Database["public"]["Enums"]["workspace_role"];
       };
     };
     Enums: {
+      health_status: "on_track" | "at_risk" | "off_track";
       layout_sharing: "shared" | "split" | "personal";
+      project_status: "active" | "on_hold" | "completed" | "cancelled";
       workspace_role: "owner" | "admin" | "member";
     };
     CompositeTypes: {
@@ -395,7 +540,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      health_status: ["on_track", "at_risk", "off_track"],
       layout_sharing: ["shared", "split", "personal"],
+      project_status: ["active", "on_hold", "completed", "cancelled"],
       workspace_role: ["owner", "admin", "member"],
     },
   },
