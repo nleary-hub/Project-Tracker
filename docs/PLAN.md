@@ -122,8 +122,8 @@ All tables carry `workspace_id` and are protected by RLS through an
   The RLS policy grants **select, insert and delete to admins and owners only**, so members get
   no rows back even if they query the table directly. It is a separate table, not a column on
   `projects`, so the flag never appears in data members can read.
-- **reports.excluded** (admin-only) — the list of projects left out of each snapshot, kept in a
-  separate `report_exclusion_log` table under the same admin-only policy. Nothing about
+- **report_exclusion_log** (admin-only) — `report_id`, `project_id`, `reason`: which projects were
+  left out of each snapshot, under the same admin-only policy. Nothing about
   exclusions is stored in the snapshot JSON that members can read.
 - **email_log** — `kind` (report | reminder), `to`, `report_id`, `status`, `error`, `sent_at`
 
