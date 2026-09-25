@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens (docs/PLAN.md §7).
+ * Executive/corporate: navy header, slate neutrals, white surfaces.
+ * v1 ships light only; every color is a token so a dark theme can be added
+ * by redefining these variables.
+ */
+:root {
+  /* Surfaces and ink */
+  --surface: #ffffff;
+  --surface-muted: #f5f7fa;
+  --border: #d9dee7;
+  --ink: #0f172a;
+  --ink-secondary: #475569;
+  --ink-muted: #64748b;
+
+  /* Brand: navy by default; admins can override the accent later (M-branding). */
+  --navy-950: #0a1630;
+  --navy-900: #0f1f3d;
+  --navy-800: #16294f;
+  --navy-700: #1f3a6e;
+  --accent: var(--navy-700);
+  --accent-ink: #ffffff;
+
+  /* Health status: reserved for health, never reused for series or decoration.
+     Always paired with a shape + label, never color alone. */
+  --health-on-track: #0ca30c;
+  --health-at-risk: #fab219;
+  --health-off-track: #d03b3b;
+  --health-inactive: #94a3b8;
+
+  --focus-ring: #2563eb;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-ink: var(--ink);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-ink-muted: var(--ink-muted);
+  --color-navy-950: var(--navy-950);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-health-on-track: var(--health-on-track);
+  --color-health-at-risk: var(--health-at-risk);
+  --color-health-off-track: var(--health-off-track);
+  --color-health-inactive: var(--health-inactive);
+  --color-focus-ring: var(--focus-ring);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--surface-muted);
+  color: var(--ink);
+  /* Tabular figures so numbers and dates align in columns. */
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
