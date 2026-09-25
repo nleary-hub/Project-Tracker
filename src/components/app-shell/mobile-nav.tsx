@@ -4,7 +4,7 @@ import { MenuIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 import { NavLinks } from "./nav-links";
 
@@ -12,16 +12,28 @@ export function MobileNav({ workspaceSlug, appName }: { workspaceSlug: string; a
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="onDark" size="icon" className="md:hidden" aria-label="Open menu">
-          <MenuIcon />
-        </Button>
+      <SheetTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white/90 hover:bg-white/10 hover:text-white md:hidden"
+            aria-label="Open menu"
+          />
+        }
+      >
+        <MenuIcon />
       </SheetTrigger>
-      <SheetContent aria-describedby={undefined}>
-        <SheetTitle className="mb-6 px-3 text-sm font-semibold tracking-[0.12em] uppercase">
-          {appName}
-        </SheetTitle>
-        <nav aria-label="Main">
+      <SheetContent
+        side="left"
+        className="w-72 border-sidebar-border bg-sidebar text-sidebar-foreground [&_[data-slot=sheet-close]]:text-white/80 [&_[data-slot=sheet-close]]:hover:bg-white/10 [&_[data-slot=sheet-close]]:hover:text-white"
+      >
+        <SheetHeader>
+          <SheetTitle className="text-sm font-semibold tracking-[0.12em] text-white uppercase">
+            {appName}
+          </SheetTitle>
+        </SheetHeader>
+        <nav aria-label="Main" className="px-2">
           <NavLinks
             workspaceSlug={workspaceSlug}
             orientation="vertical"

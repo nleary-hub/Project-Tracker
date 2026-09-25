@@ -15,7 +15,7 @@ export function AppHeader({ workspaceSlug, appName }: { workspaceSlug: string; a
           >
             <span
               aria-hidden="true"
-              className="inline-block size-3 rotate-45 border border-white/60 bg-accent"
+              className="inline-block size-3 rotate-45 border border-white/60 bg-brand"
             />
             {appName}
           </Link>
