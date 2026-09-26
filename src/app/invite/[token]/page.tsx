@@ -27,8 +27,11 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
         description={
           <>
             You&apos;ve been invited as {article(ROLE_LABELS[preview.role])}{" "}
-            <span className="font-medium text-ink">{ROLE_LABELS[preview.role].toLowerCase()}</span>.
-            You&apos;ll join as <span className="font-medium text-ink">{profile.email}</span>.
+            <span className="font-medium text-foreground">
+              {ROLE_LABELS[preview.role].toLowerCase()}
+            </span>
+            . You&apos;ll join as{" "}
+            <span className="font-medium text-foreground">{profile.email}</span>.
           </>
         }
       >

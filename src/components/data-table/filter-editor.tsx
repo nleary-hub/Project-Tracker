@@ -259,14 +259,14 @@ export function FilterChips<Row>({
         return (
           <span
             key={id}
-            className="inline-flex h-7 items-center gap-1 rounded-sm border border-border bg-surface pr-1 pl-2 text-xs text-ink"
+            className="inline-flex h-7 items-center gap-1 rounded-xl border border-border/80 bg-card pr-1 pl-2 text-xs text-foreground shadow-xs"
           >
-            <span className="text-ink-muted">{column.header}:</span>
+            <span className="text-muted-foreground">{column.header}:</span>
             <span className="max-w-56 truncate font-medium">{describeFilter(column, filter)}</span>
             <button
               type="button"
               aria-label={`Remove ${column.header} filter`}
-              className="rounded-sm p-0.5 text-ink-muted hover:bg-muted hover:text-ink"
+              className="rounded-sm p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={() => onRemove(id)}
             >
               <XIcon className="size-3" />

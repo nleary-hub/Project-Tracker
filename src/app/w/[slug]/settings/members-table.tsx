@@ -66,10 +66,10 @@ export function MembersTable({
   isAdmin: boolean;
 }) {
   return (
-    <div className="overflow-hidden rounded-sm border border-border bg-surface">
+    <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
       <Table>
         <TableHeader>
-          <TableRow className="bg-surface-muted hover:bg-surface-muted">
+          <TableRow className="bg-muted/40 hover:bg-muted/40">
             <TableHead>Member</TableHead>
             <TableHead className="w-36">Role</TableHead>
             <TableHead className="w-32">Joined</TableHead>
@@ -91,14 +91,16 @@ export function MembersTable({
                       <AvatarFallback>{initialsOf(m.displayName, m.email)}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-ink">
+                      <p className="truncate font-medium text-foreground">
                         {m.displayName || m.email}
                         {isSelf && (
-                          <span className="ml-1.5 text-xs font-normal text-ink-muted">(you)</span>
+                          <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                            (you)
+                          </span>
                         )}
                       </p>
                       {m.displayName && (
-                        <p className="truncate text-xs text-ink-muted">{m.email}</p>
+                        <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                       )}
                     </div>
                   </div>
@@ -112,7 +114,7 @@ export function MembersTable({
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell className="text-ink-secondary">{m.joined}</TableCell>
+                <TableCell className="text-muted-foreground">{m.joined}</TableCell>
                 <TableCell className="text-right">
                   {canEdit && <RemoveMemberButton slug={slug} member={m} />}
                   {isSelf && m.role !== "owner" && <LeaveButton slug={slug} />}

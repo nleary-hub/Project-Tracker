@@ -197,17 +197,17 @@ function CopyLink({ link }: { link: string }) {
 export function InvitesTable({ slug, invites }: { slug: string; invites: InviteRow[] }) {
   if (invites.length === 0) {
     return (
-      <p className="rounded-sm border border-dashed border-border bg-surface px-4 py-6 text-center text-sm text-ink-secondary">
+      <p className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
         No invite links yet. Create one to bring a teammate in.
       </p>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-sm border border-border bg-surface">
+    <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
       <Table>
         <TableHeader>
-          <TableRow className="bg-surface-muted hover:bg-surface-muted">
+          <TableRow className="bg-muted/40 hover:bg-muted/40">
             <TableHead>Link</TableHead>
             <TableHead className="w-24">Role</TableHead>
             <TableHead className="w-24">Status</TableHead>
@@ -222,10 +222,12 @@ export function InvitesTable({ slug, invites }: { slug: string; invites: InviteR
           {invites.map((invite) => (
             <TableRow
               key={invite.id}
-              className={invite.status !== "active" ? "text-ink-muted" : undefined}
+              className={invite.status !== "active" ? "text-muted-foreground" : undefined}
             >
               <TableCell className="font-medium">
-                {invite.label ?? <span className="font-normal text-ink-muted">Untitled link</span>}
+                {invite.label ?? (
+                  <span className="font-normal text-muted-foreground">Untitled link</span>
+                )}
               </TableCell>
               <TableCell>{ROLE_LABELS[invite.role]}</TableCell>
               <TableCell>

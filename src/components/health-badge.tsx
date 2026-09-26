@@ -39,7 +39,7 @@ export function HealthBadge({ status, override, className }: HealthBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-sm border border-border bg-surface px-2 py-0.5 text-xs font-medium whitespace-nowrap text-ink",
+        "inline-flex h-6 items-center gap-1.5 rounded-full border border-border bg-card px-2 text-xs font-medium whitespace-nowrap text-foreground",
         className,
       )}
       data-status={status}
@@ -47,7 +47,7 @@ export function HealthBadge({ status, override, className }: HealthBadgeProps) {
       <ShapeIcon shape={meta.shape} colorVar={meta.colorVar} />
       {meta.label}
       {override && (
-        <span className="text-[10px] font-normal tracking-wide text-ink-muted uppercase">
+        <span className="text-[10px] font-normal tracking-wide text-muted-foreground uppercase">
           override
         </span>
       )}

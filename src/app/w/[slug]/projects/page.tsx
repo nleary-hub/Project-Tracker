@@ -117,7 +117,7 @@ export default async function ProjectsPage({
                   Open settings
                 </Button>
               ) : (
-                <p className="text-sm text-ink-muted">Ask an admin to add departments.</p>
+                <p className="text-sm text-muted-foreground">Ask an admin to add departments.</p>
               )
             }
           />
@@ -174,9 +174,9 @@ function EmptyState({
   action: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-lg rounded-sm border border-dashed border-border bg-surface px-6 py-12 text-center">
-      <h2 className="text-base font-semibold text-ink">{title}</h2>
-      <p className="mt-2 text-sm text-ink-secondary">{body}</p>
+    <div className="mx-auto max-w-lg rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
+      <p className="mt-2 text-sm text-muted-foreground">{body}</p>
       <div className="mt-6 flex justify-center">{action}</div>
     </div>
   );

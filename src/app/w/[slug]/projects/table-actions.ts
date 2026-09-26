@@ -5,10 +5,11 @@ import * as z from "zod";
 
 import { type ActionState, fail, succeed } from "@/lib/action-result";
 import { NotAuthorizedError, requireWorkspace, requireWorkspaceAdmin } from "@/lib/auth/dal";
-import { layoutPatchToRow, serializeFilterState } from "@/lib/data/table-layouts";
 import { createClient } from "@/lib/supabase/server";
 import type { FilterState } from "@/lib/table/filters";
 import { type TableLayout, layoutTargets } from "@/lib/table/layout";
+
+import { saveTableFilters, saveTableLayout } from "../table-layout-actions";
 import type { Ranked } from "@/lib/table/reorder";
 
 import type { GroupMove, RowMove } from "@/components/data-table/types";
@@ -21,15 +22,6 @@ import type { GroupMove, RowMove } from "@/components/data-table/types";
 
 const TABLE_KEY = "projects";
 const NOT_ALLOWED = "You don't have permission to change the shared layout.";
-
-const LayoutPatchSchema = z.object({
-  columnOrder: z.array(z.string()).optional(),
-  columnWidths: z.record(z.string(), z.number().min(24).max(2000)).optional(),
-  hiddenColumns: z.array(z.string()).optional(),
-  sort: z.array(z.object({ id: z.string(), desc: z.boolean() })).optional(),
-  density: z.enum(["compact", "default", "comfortable"]).optional(),
-  rowHeightPx: z.number().int().min(24).max(240).nullable().optional(),
-});
 
 async function sharingMode(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -47,78 +39,14 @@ export async function saveProjectsLayout(
   slug: string,
   patch: Partial<TableLayout>,
 ): Promise<ActionState> {
-  const parsed = LayoutPatchSchema.safeParse(patch);
-  if (!parsed.success) return fail("That layout change isn't valid.");
-
-  const ctx = await requireWorkspace(slug);
-  const supabase = await createClient();
-  const mode = await sharingMode(supabase, ctx.workspace.id);
-  const target = layoutTargets(mode).columns;
-  if (target === "shared" && !(ctx.isAdmin || mode === "shared")) return fail(NOT_ALLOWED);
-
-  const userId = target === "shared" ? null : ctx.user.id;
-  const row = layoutPatchToRow(parsed.data);
-
-  // The shared/personal uniqueness lives in partial indexes, which PostgREST's
-  // upsert can't target, so this is select-then-write. Two quick saves (e.g.
-  // clicking a header three times) can both miss the select and race to
-  // insert; the loser gets 23505 and simply retries as an update.
-  const findExisting = async () => {
-    let query = supabase
-      .from("table_layouts")
-      .select("id")
-      .eq("workspace_id", ctx.workspace.id)
-      .eq("table_key", TABLE_KEY);
-    query = userId === null ? query.is("user_id", null) : query.eq("user_id", userId);
-    return (await query.maybeSingle()).data;
-  };
-  const update = (id: string) =>
-    supabase
-      .from("table_layouts")
-      .update({ ...row, updated_by: ctx.user.id })
-      .eq("id", id);
-
-  const existing = await findExisting();
-  let { error } = existing
-    ? await update(existing.id)
-    : await supabase.from("table_layouts").insert({
-        ...row,
-        workspace_id: ctx.workspace.id,
-        table_key: TABLE_KEY,
-        user_id: userId,
-        updated_by: ctx.user.id,
-      });
-  if (error?.code === "23505") {
-    const raced = await findExisting();
-    if (raced) ({ error } = await update(raced.id));
-  }
-  if (error) {
-    console.error("table_layouts save failed", { code: error.code, message: error.message });
-    return fail(error.code === "42501" ? NOT_ALLOWED : "Couldn't save the layout.");
-  }
-
-  revalidatePath(`/w/${slug}/projects`);
-  return succeed();
+  return saveTableLayout(slug, TABLE_KEY, patch);
 }
 
 export async function saveProjectsFilters(
   slug: string,
   filters: FilterState,
 ): Promise<ActionState> {
-  const ctx = await requireWorkspace(slug);
-  const supabase = await createClient();
-  const { error } = await supabase.from("user_table_filters").upsert(
-    {
-      workspace_id: ctx.workspace.id,
-      user_id: ctx.user.id,
-      table_key: TABLE_KEY,
-      filters: serializeFilterState(filters),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "workspace_id,user_id,table_key" },
-  );
-  if (error) return fail("Couldn't save your filters.");
-  return succeed();
+  return saveTableFilters(slug, TABLE_KEY, filters);
 }
 
 const RowMoveSchema = z.object({

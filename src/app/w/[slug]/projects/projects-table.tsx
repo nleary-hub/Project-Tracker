@@ -61,7 +61,7 @@ export function ProjectsTable(props: ProjectsTableProps) {
           <span className="flex items-center gap-2">
             <Link
               href={`${base}/${p.id}`}
-              className="truncate font-medium text-ink hover:underline"
+              className="truncate font-medium text-foreground hover:underline"
             >
               {p.name}
             </Link>
@@ -77,7 +77,7 @@ export function ProjectsTable(props: ProjectsTableProps) {
         kind: "enum",
         accessor: (p) => p.owner_id,
         cell: (p) => (
-          <span className={cn(!p.owner_id && "text-ink-muted")}>
+          <span className={cn(!p.owner_id && "text-muted-foreground")}>
             {p.owner_id ? (personName.get(p.owner_id) ?? UNKNOWN_PERSON) : "Unassigned"}
           </span>
         ),
@@ -103,7 +103,7 @@ export function ProjectsTable(props: ProjectsTableProps) {
           p.nextMilestone ? (
             p.nextMilestone.name
           ) : (
-            <span className="text-ink-muted">
+            <span className="text-muted-foreground">
               {p.status === "active" ? "No open milestones" : "—"}
             </span>
           ),
@@ -116,7 +116,7 @@ export function ProjectsTable(props: ProjectsTableProps) {
         accessor: (p) => p.nextMilestone?.due_date ?? null,
         cell: (p) => {
           const due = p.nextMilestone?.due_date;
-          if (!due) return <span className="text-ink-muted">—</span>;
+          if (!due) return <span className="text-muted-foreground">—</span>;
           const overdue = due < dates.today;
           return (
             <span className={cn(overdue && "font-medium text-health-off-track")}>
@@ -133,7 +133,11 @@ export function ProjectsTable(props: ProjectsTableProps) {
         kind: "date",
         accessor: (p) => p.due_date,
         cell: (p) =>
-          p.due_date ? formatDate(p.due_date, timeZone) : <span className="text-ink-muted">—</span>,
+          p.due_date ? (
+            formatDate(p.due_date, timeZone)
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
         defaultWidth: 110,
       },
       {
@@ -145,7 +149,7 @@ export function ProjectsTable(props: ProjectsTableProps) {
           p.start_date ? (
             formatDate(p.start_date, timeZone)
           ) : (
-            <span className="text-ink-muted">—</span>
+            <span className="text-muted-foreground">—</span>
           ),
         defaultWidth: 120,
         defaultHidden: true,
@@ -204,13 +208,13 @@ export function ProjectsTable(props: ProjectsTableProps) {
       renderCard={(p) => (
         <Link
           href={`${base}/${p.id}`}
-          className="block rounded-sm border border-border bg-surface px-3 py-2.5 hover:bg-surface-muted"
+          className="block rounded-xl border border-border/80 bg-card px-3 py-2.5 shadow-xs hover:bg-muted/40"
         >
           <div className="flex items-start justify-between gap-2">
-            <span className="font-medium text-ink">{p.name}</span>
+            <span className="font-medium text-foreground">{p.name}</span>
             <ProjectStatusBadge status={p.status as ProjectStatus} />
           </div>
-          <p className="mt-1 text-xs text-ink-secondary">
+          <p className="mt-1 text-xs text-muted-foreground">
             {p.owner_id ? (personName.get(p.owner_id) ?? UNKNOWN_PERSON) : "Unassigned"}
             {p.nextMilestone && (
               <>

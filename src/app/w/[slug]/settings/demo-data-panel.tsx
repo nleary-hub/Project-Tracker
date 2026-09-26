@@ -26,7 +26,7 @@ export function DemoDataPanel({ slug, demoProjects }: { slug: string; demoProjec
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-ink-secondary">
+      <p className="text-sm text-muted-foreground">
         {loaded
           ? `${demoProjects} demo ${demoProjects === 1 ? "project is" : "projects are"} loaded. They're marked "Demo" everywhere and are left out of nothing — treat them as real until you wipe them.`
           : "Twelve sample projects across four departments, with milestones that are overdue, due soon and comfortably ahead."}

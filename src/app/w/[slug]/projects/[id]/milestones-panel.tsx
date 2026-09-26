@@ -78,28 +78,28 @@ export function MilestonesPanel({
   return (
     <section aria-labelledby="milestones-heading" className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
-        <h2 id="milestones-heading" className="text-base font-semibold text-ink">
+        <h2 id="milestones-heading" className="text-base font-semibold text-foreground">
           Milestones
         </h2>
-        <span className="text-xs text-ink-muted">
+        <span className="text-xs text-muted-foreground">
           {open} open · {milestones.length - open} done
         </span>
       </div>
 
       {milestones.length === 0 ? (
-        <p className="rounded-sm border border-dashed border-border bg-surface px-4 py-6 text-center text-sm text-ink-secondary">
+        <p className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
           No milestones yet. The earliest open milestone becomes the project&apos;s &ldquo;next
           step&rdquo; in every report.
         </p>
       ) : (
-        <ol className="divide-y divide-border overflow-hidden rounded-sm border border-border bg-surface">
+        <ol className="divide-y divide-border overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
           {milestones.map((m) => {
             const done = m.completed_at !== null;
             const overdue = isOverdue(m, today);
             return (
               <li
                 key={m.id}
-                className={cn("flex items-center gap-3 px-3 py-2", done && "text-ink-muted")}
+                className={cn("flex items-center gap-3 px-3 py-2", done && "text-muted-foreground")}
               >
                 <CompleteToggle slug={slug} milestone={m} disabled={!canEdit} />
                 <div className="min-w-0 flex-1">
@@ -107,7 +107,7 @@ export function MilestonesPanel({
                     <span
                       className={cn(
                         "truncate text-sm font-medium",
-                        done ? "line-through" : "text-ink",
+                        done ? "line-through" : "text-foreground",
                       )}
                     >
                       {m.name}
@@ -121,16 +121,16 @@ export function MilestonesPanel({
                         {formatDate(m.due_date, timeZone)}
                       </span>
                     ) : (
-                      <span className="text-ink-muted">No date</span>
+                      <span className="text-muted-foreground">No date</span>
                     )}
                     {m.owner_id && (
-                      <span className="text-ink-muted">
+                      <span className="text-muted-foreground">
                         {" "}
                         · {personName.get(m.owner_id) ?? UNKNOWN_PERSON}
                       </span>
                     )}
                     {done && m.completed_at && (
-                      <span className="text-ink-muted">
+                      <span className="text-muted-foreground">
                         {" "}
                         · Completed {formatDate(m.completed_at, timeZone)}
                       </span>
@@ -276,7 +276,7 @@ function AddMilestoneForm({
       ref={formRef}
       action={action}
       noValidate
-      className="rounded-sm border border-border bg-surface-muted p-3"
+      className="rounded-xl border border-border/80 bg-muted/40 p-3 shadow-xs"
     >
       <MilestoneFields
         key={generation}

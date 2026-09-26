@@ -172,7 +172,7 @@ export default async function SettingsPage({ params }: PageProps<"/w/[slug]/sett
                 <li key={s.id}>
                   <a
                     href={`#${s.id}`}
-                    className="block rounded-sm px-2 py-1 text-ink-secondary hover:bg-surface hover:text-ink"
+                    className="block rounded-sm px-2 py-1 text-muted-foreground hover:bg-card hover:text-foreground"
                   >
                     {s.label}
                   </a>
@@ -191,15 +191,15 @@ export default async function SettingsPage({ params }: PageProps<"/w/[slug]/sett
                 <WorkspaceNameForm slug={workspace.slug} name={workspace.name} />
               ) : (
                 <dl className="grid max-w-md grid-cols-[100px_1fr] gap-y-2 text-sm">
-                  <dt className="text-ink-muted">Name</dt>
-                  <dd className="font-medium text-ink">{workspace.name}</dd>
+                  <dt className="text-muted-foreground">Name</dt>
+                  <dd className="font-medium text-foreground">{workspace.name}</dd>
                 </dl>
               )}
               <dl className="mt-4 grid max-w-md grid-cols-[100px_1fr] gap-y-2 text-sm">
-                <dt className="text-ink-muted">Address</dt>
-                <dd className="font-mono text-xs text-ink-secondary">/w/{workspace.slug}</dd>
-                <dt className="text-ink-muted">Timezone</dt>
-                <dd className="text-ink-secondary">{workspace.timezone}</dd>
+                <dt className="text-muted-foreground">Address</dt>
+                <dd className="font-mono text-xs text-muted-foreground">/w/{workspace.slug}</dd>
+                <dt className="text-muted-foreground">Timezone</dt>
+                <dd className="text-muted-foreground">{workspace.timezone}</dd>
               </dl>
             </SettingsSection>
 

@@ -26,7 +26,7 @@ export default async function OnboardingPage() {
         <>
           Create the workspace your team will track projects in. If someone already set one up, ask
           them for an invite link instead — you&apos;re signed in as{" "}
-          <span className="font-medium text-ink">{profile.email}</span>.
+          <span className="font-medium text-foreground">{profile.email}</span>.
         </>
       }
     >

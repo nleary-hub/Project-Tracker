@@ -212,11 +212,17 @@ A "Live preview" view shows what the report would say right now, without saving 
 
 ## 7. Visual design
 
-**Look:** executive and corporate. A navy app header and report header band ("PORTFOLIO
-STATUS · Cycle ending Fri 9 Oct 2026"), slate neutrals, white content surfaces, thin table
-borders, and compact row height. Inter font with tabular figures, so numbers and dates line up
-in columns. One accent color (navy by default; admins can change it). Colors are defined as
-tokens, so a dark theme can be added later. v1 has a light theme only, and the PDF is always light.
+**Look (D32, refreshed 2026-09-26):** a light, quiet SaaS interface. A collapsible left
+sidebar (workspace switcher, navigation with an animated active indicator, theme toggle,
+account) beside a soft off-white canvas; content sits in white panels with hairline borders
+and layered shadows, rounded 10px. Geist type with tabular figures so numbers and dates line
+up in columns; 26px page titles, 15px section titles, 13–14px body. One vivid accent (indigo
+blue) for primary actions, links, active states and the brand mark; admins can change it
+later. Light, dark and system themes ship from the start — every color is an OKLCH token
+redefined under `.dark`. Motion is purposeful and fast (200 ms page fade-in, KPI count-ups,
+list exits, sidebar indicator spring) and is disabled when the OS asks for reduced motion.
+The report keeps its own formal header band ("PORTFOLIO STATUS · Cycle ending Fri 9 Oct
+2026"), and the PDF is always light.
 
 **Health status colors** are reserved for health and never reused for anything else. Health
 is never shown by color alone: every badge has a **shape and a label**, so it still reads when
