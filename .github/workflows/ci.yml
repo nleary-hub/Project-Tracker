@@ -61,15 +61,27 @@ jobs:
       - name: Start local Supabase (applies migrations and seed.sql)
         run: |
           supabase start -x studio,imgproxy,inbucket,edge-runtime,logflare,vector,realtime,storage-api
-          supabase status -o env | grep -E '^(API_URL|ANON_KEY)=' >> "$GITHUB_ENV"
+          # `status -o env` quotes its values and the key names have changed across CLI
+          # versions (ANON_KEY → PUBLISHABLE_KEY), so read them defensively.
+          supabase status -o env > "$RUNNER_TEMP/supabase.env"
+          echo "status keys: $(cut -d= -f1 "$RUNNER_TEMP/supabase.env" | tr '\n' ' ')"
+          read_var() { grep -E "^($1)=" "$RUNNER_TEMP/supabase.env" | head -n1 | cut -d= -f2- | tr -d '"'; }
+          url=$(read_var 'API_URL|SUPABASE_URL')
+          key=$(read_var 'PUBLISHABLE_KEY|SUPABASE_PUBLISHABLE_KEY|ANON_KEY|SUPABASE_ANON_KEY')
+          if [ -z "$url" ] || [ -z "$key" ]; then
+            echo "::error::could not read the local Supabase URL/key from 'supabase status -o env'"
+            exit 1
+          fi
+          echo "LOCAL_SUPABASE_URL=$url" >> "$GITHUB_ENV"
+          echo "LOCAL_SUPABASE_KEY=$key" >> "$GITHUB_ENV"
       - name: Build and run Playwright against the production server
         run: |
           pnpm build
           pnpm exec playwright test
         env:
           CI: "true"
-          NEXT_PUBLIC_SUPABASE_URL: ${{ env.API_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.LOCAL_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.LOCAL_SUPABASE_KEY }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
