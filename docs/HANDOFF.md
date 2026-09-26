@@ -84,12 +84,12 @@ has been done and what is set up outside the repo.
 
 ## External services (all $0 plans)
 
-| Service            | Details                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Supabase           | Project `project-tracker`, ref `gmnomcketaofqypwlwxq`, region `us-east-1`, free plan, org "nleary-hub's Org". M1 + M2 migrations applied. URL + publishable key live in `.env.local` (gitignored) and in Vercel env vars. `.mcp.json` registers the Supabase MCP server for Claude Code sessions.                                                           |
-| Vercel             | Project `project-tracker` (Hobby), linked to `nleary-hub/Project-Tracker`. `main` = production; every branch push gets a preview. Preview protection is on (sign in to Vercel to view). Env vars `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set for all environments.                                                        |
-| Google OAuth       | Provider is **enabled in Supabase** with a Google client ID, but Google still returns `redirect_uri_mismatch`: add `https://gmnomcketaofqypwlwxq.supabase.co/auth/v1/callback` to the OAuth client's **Authorized redirect URIs** in Google Cloud Console, and `http://localhost:3000/**` to Supabase → Authentication → URL Configuration → Redirect URLs. |
-| Email (Gmail SMTP) | Not set up yet. Needed in M8.                                                                                                                                                                                                                                                                                                                               |
+| Service            | Details                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Supabase           | Project `project-tracker`, ref `gmnomcketaofqypwlwxq`, region `us-east-1`, free plan, org "nleary-hub's Org". M1 + M2 migrations applied. URL + publishable key live in `.env.local` (gitignored) and in Vercel env vars. `.mcp.json` registers the Supabase MCP server for Claude Code sessions.                                                                                                                                          |
+| Vercel             | Project `project-tracker` (Hobby), linked to `nleary-hub/Project-Tracker`. `main` = production; every branch push gets a preview. Preview protection is on (sign in to Vercel to view). Env vars `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set for all environments.                                                                                                                                       |
+| Google OAuth       | **Working** as of 2026-09-25: provider enabled in Supabase; `https://gmnomcketaofqypwlwxq.supabase.co/auth/v1/callback` is an authorized redirect URI on the Google client; consent screen is **External** (it was Internal, which rejected gmail accounts with `403 org_internal`). Verified locally: sign in → `/auth/callback` → workspace dashboard. Add Vercel preview/production origins to Supabase Redirect URLs before deploying. |
+| Email (Gmail SMTP) | Not set up yet. Needed in M8.                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## Local development
 
@@ -102,7 +102,7 @@ has been done and what is set up outside the repo.
 - After any migration: apply it to the hosted project (Supabase MCP `apply_migration` or
   `supabase db push`), rename the local file to the version Supabase recorded, then
   regenerate `src/lib/supabase/database.types.ts`.
-- Google sign-in isn't usable locally until the redirect URI above is fixed. For UI checks,
+- Google sign-in works locally. For multi-user UI checks without extra Google accounts,
   throwaway email/password users can be created with SQL (`extensions.crypt`), signed in
   headlessly with `@supabase/ssr`, and their `sb-<ref>-auth-token` cookie injected into the
   browser. Delete them afterwards.
@@ -129,7 +129,7 @@ has been done and what is set up outside the repo.
 ## Recommended next step
 
 Open and merge PRs for `m1/auth-workspaces`, `m2/projects-milestones` and
-`m3/interactive-tables` in that order (after PR #1), fix the Google redirect URI, then start
+`m3/interactive-tables` in that order (after PR #1), then start
 **M4 — tasks + activity events** on a fresh branch from `main`, reusing `DataTable` for the
 task list (PLAN §12). UI polish (tweakcn theme presets, Magic UI-style micro-interactions)
 is queued for M6+ once the report views exist.
