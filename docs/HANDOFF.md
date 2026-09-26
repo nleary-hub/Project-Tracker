@@ -53,6 +53,34 @@ has been done and what is set up outside the repo.
   - Verified in the browser with throwaway accounts: load demo data → list + filters →
     project page → complete a milestone, add one → create a project (validation error
     keeps typed values) → member view has no edit controls but can create → delete.
+- **M3 complete** on branch `m3/interactive-tables` (branched from the M2 tip):
+  - Migration `20260925230402_table_layouts.sql` — `table_layouts` (one shared row per
+    table with `user_id null`, plus personal rows), `user_row_ranks`, `user_table_filters`,
+    `table_density` enum; helpers `layout_sharing()`, `can_edit_shared_layout()`,
+    `can_edit_shared_order()`; RPCs `move_project(p_project, p_rank, p_department)` and
+    `set_project_ranks(jsonb)`; RLS: layouts follow the workspace's sharing mode, ranks and
+    filters are always the caller's own.
+  - `src/components/data-table/` — the shared `DataTable` (TanStack Table v8 + dnd-kit):
+    header click sorts (shift = multi-sort), ⋯ menu per column (sort, filter, hide, reset
+    width), popover filter editors (text contains / enum with counts / date presets or
+    range), filter chips, filters + sort mirrored in the URL (`f.<col>=…`, `sort=due,-name`),
+    row drag with insertion marker and Undo toast, cross-department move behind an
+    AlertDialog, department (group) drag for admins, column drag/resize/autofit, Columns
+    menu, density presets + row-height drag, Reset layout, keyboard drag (Space/arrows/Esc)
+    with screen-reader announcements, reduced-motion support, and a card list with a
+    "Sort & filter" sheet on phones. Pure logic in `src/lib/table/` (filters, layout, reorder)
+    with Vitest coverage.
+  - Projects list rewired onto `DataTable` (`projects-table.tsx`, `table-actions.ts`,
+    `projects-columns.ts`); `page.tsx` resolves the effective layout/order for the three
+    sharing modes (`src/lib/data/table-layouts.ts`) and reads filters/sort from the URL first,
+    saved state second.
+  - Playwright suite `tests/e2e/projects-table.spec.ts` (8 tests: row drag + reload, Esc
+    cancel, keyboard move, cross-department confirm, column drag, sort in URL, filter chip,
+    two-user shared/personal modes). Runs against a **production build** on port 3100 — the
+    dev server's Fast Refresh remounted the table mid-drag and made the suite flaky.
+  - Gotcha fixed late: `history.replaceState` must be called with `null` state. Next.js
+    patches it to keep the App Router URL in sync but skips the sync when handed its own
+    state object, so the next server-action refresh silently dropped the `f.*`/`sort` params.
 
 ## External services (all $0 plans)
 
@@ -79,15 +107,32 @@ has been done and what is set up outside the repo.
   headlessly with `@supabase/ssr`, and their `sb-<ref>-auth-token` cookie injected into the
   browser. Delete them afterwards.
 
+### End-to-end tests (Playwright)
+
+- `pnpm build` then `pnpm test:e2e` (or `pnpm test:e2e:build` for both). The config starts
+  `next start --port 3100` itself; `tests/e2e/global-setup.ts` signs the two e2e users in
+  with `@supabase/ssr` and writes storage states to `tests/e2e/.auth/` (gitignored).
+- The suite needs two email/password users and resets its own `e2e-tables` workspace before
+  every test (`tests/e2e/fixture.ts`). CI creates them from `supabase/seed.sql` on a local
+  Supabase (Docker). Locally, point `.env.local` at a Supabase that has them — the seed's
+  password is public, so **do not leave these users on the hosted project**; they were
+  removed after the M3 run. To recreate them on the hosted project temporarily, run the
+  `auth.users` / `auth.identities` inserts from `supabase/seed.sql` via the Supabase MCP,
+  and delete both users (cascade removes the workspace) when done. Override the accounts
+  with `E2E_OWNER_EMAIL` / `E2E_OWNER_PASSWORD` / `E2E_MEMBER_EMAIL` / `E2E_MEMBER_PASSWORD`
+  / `E2E_WORKSPACE_SLUG` (see `tests/e2e/env.ts`).
+- On this machine Playwright browsers live in `E:\Claude\ms-playwright`
+  (`PLAYWRIGHT_BROWSERS_PATH` user env var) because **C: is nearly full** — installs to the
+  default cache failed with ENOSPC and left a corrupt Chromium. `playwright.config.ts` uses
+  `channel: "chromium"` (full Chromium, not the headless shell).
+
 ## Recommended next step
 
-Open and merge PRs for `m1/auth-workspaces` and `m2/projects-milestones` (after PR #1),
-fix the Google redirect URI, then start **M3 — interactive tables** on a fresh branch from
-`main`: the shared `DataTable` (TanStack Table + dnd-kit) with header sort/filter, filter
-chips, filters and sort in the URL, row and column drag with animation and insertion marker,
-cross-department confirm, department drag, column resize, row-height presets, Undo, keyboard
-drag; `table_layouts` / `user_row_ranks` / `user_table_filters` tables and the three sharing
-modes. Apply it to the projects list first (PLAN §8, §12).
+Open and merge PRs for `m1/auth-workspaces`, `m2/projects-milestones` and
+`m3/interactive-tables` in that order (after PR #1), fix the Google redirect URI, then start
+**M4 — tasks + activity events** on a fresh branch from `main`, reusing `DataTable` for the
+task list (PLAN §12). UI polish (tweakcn theme presets, Magic UI-style micro-interactions)
+is queued for M6+ once the report views exist.
 
 ## Conventions
 

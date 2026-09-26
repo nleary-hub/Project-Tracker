@@ -210,6 +210,126 @@ export type Database = {
           },
         ];
       };
+      table_layouts: {
+        Row: {
+          column_order: string[];
+          column_widths: Json;
+          density: Database["public"]["Enums"]["table_density"];
+          hidden_columns: string[];
+          id: string;
+          row_height_px: number | null;
+          sort: Json;
+          table_key: string;
+          updated_at: string;
+          updated_by: string | null;
+          user_id: string | null;
+          workspace_id: string;
+        };
+        Insert: {
+          column_order?: string[];
+          column_widths?: Json;
+          density?: Database["public"]["Enums"]["table_density"];
+          hidden_columns?: string[];
+          id?: string;
+          row_height_px?: number | null;
+          sort?: Json;
+          table_key: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          user_id?: string | null;
+          workspace_id: string;
+        };
+        Update: {
+          column_order?: string[];
+          column_widths?: Json;
+          density?: Database["public"]["Enums"]["table_density"];
+          hidden_columns?: string[];
+          id?: string;
+          row_height_px?: number | null;
+          sort?: Json;
+          table_key?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          user_id?: string | null;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "table_layouts_workspace_id_fkey";
+            columns: ["workspace_id"];
+            isOneToOne: false;
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      user_row_ranks: {
+        Row: {
+          rank: string;
+          row_id: string;
+          table_key: string;
+          updated_at: string;
+          user_id: string;
+          workspace_id: string;
+        };
+        Insert: {
+          rank: string;
+          row_id: string;
+          table_key: string;
+          updated_at?: string;
+          user_id: string;
+          workspace_id: string;
+        };
+        Update: {
+          rank?: string;
+          row_id?: string;
+          table_key?: string;
+          updated_at?: string;
+          user_id?: string;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_row_ranks_workspace_id_fkey";
+            columns: ["workspace_id"];
+            isOneToOne: false;
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      user_table_filters: {
+        Row: {
+          filters: Json;
+          table_key: string;
+          updated_at: string;
+          user_id: string;
+          workspace_id: string;
+        };
+        Insert: {
+          filters?: Json;
+          table_key: string;
+          updated_at?: string;
+          user_id: string;
+          workspace_id: string;
+        };
+        Update: {
+          filters?: Json;
+          table_key?: string;
+          updated_at?: string;
+          user_id?: string;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_table_filters_workspace_id_fkey";
+            columns: ["workspace_id"];
+            isOneToOne: false;
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       workspace_invites: {
         Row: {
           accepted_at: string | null;
@@ -372,6 +492,8 @@ export type Database = {
         };
       };
       can_edit_project: { Args: { p: string }; Returns: boolean };
+      can_edit_shared_layout: { Args: { ws: string }; Returns: boolean };
+      can_edit_shared_order: { Args: { ws: string }; Returns: boolean };
       create_workspace: {
         Args: { p_name: string; p_slug: string };
         Returns: {
@@ -401,6 +523,15 @@ export type Database = {
       };
       is_workspace_admin: { Args: { ws: string }; Returns: boolean };
       is_workspace_member: { Args: { ws: string }; Returns: boolean };
+      layout_sharing: {
+        Args: { ws: string };
+        Returns: Database["public"]["Enums"]["layout_sharing"];
+      };
+      move_project: {
+        Args: { p_department?: string; p_project: string; p_rank?: string };
+        Returns: undefined;
+      };
+      set_project_ranks: { Args: { p_ranks: Json }; Returns: number };
       shares_workspace_with: { Args: { other_user: string }; Returns: boolean };
       wipe_demo_data: {
         Args: { ws: string };
@@ -418,6 +549,7 @@ export type Database = {
       health_status: "on_track" | "at_risk" | "off_track";
       layout_sharing: "shared" | "split" | "personal";
       project_status: "active" | "on_hold" | "completed" | "cancelled";
+      table_density: "compact" | "default" | "comfortable";
       workspace_role: "owner" | "admin" | "member";
     };
     CompositeTypes: {
@@ -543,6 +675,7 @@ export const Constants = {
       health_status: ["on_track", "at_risk", "off_track"],
       layout_sharing: ["shared", "split", "personal"],
       project_status: ["active", "on_hold", "completed", "cancelled"],
+      table_density: ["compact", "default", "comfortable"],
       workspace_role: ["owner", "admin", "member"],
     },
   },
