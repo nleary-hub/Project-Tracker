@@ -6,13 +6,21 @@ has been done and what is set up outside the repo.
 
 ## Done
 
+M0–M3 are **merged to `main`** via
+[PR #3](https://github.com/nleary-hub/Project-Tracker/pull/3) (rebase-merged 2026-09-26, CI
+green including the Playwright job) and deployed to production at
+https://project-tracker-seven-ivory.vercel.app. Because of the rebase, the milestone
+branches (`claude/planning-session-ixlva0`, `m1/…`, `m2/…`, `m3/…`) hold the same content as
+`main` under different commit SHAs; they can be deleted, and PR #1 should be closed as
+superseded rather than merged.
+
 - **Plan** agreed and recorded in `docs/PLAN.md`.
-- **M0 complete** on branch `claude/planning-session-ixlva0`, open as draft
-  [PR #1](https://github.com/nleary-hub/Project-Tracker/pull/1), CI green:
+- **M0 complete** on branch `claude/planning-session-ixlva0`
+  ([PR #1](https://github.com/nleary-hub/Project-Tracker/pull/1), superseded by PR #3):
   Next.js 16 + Tailwind v4 + shadcn/ui (base-nova, Base UI), executive theme tokens,
   `HealthBadge`, app shell with phone menu, placeholder pages, Vitest, Prettier,
   GitHub Actions CI, Supabase CLI config.
-- **M1 complete** on branch `m1/auth-workspaces` (pushed; PR not yet opened):
+- **M1 complete** (branch `m1/auth-workspaces`, merged via PR #3):
   - Migration `20260925035135_workspaces.sql` — `profiles` (kept in sync from `auth.users`
     by trigger), `workspaces`, `workspace_members` (one owner per workspace),
     `workspace_invites` (single-use links, 7-day expiry), `departments` (fractional `rank`),
@@ -128,10 +136,10 @@ has been done and what is set up outside the repo.
 
 ## Recommended next step
 
-Open and merge PRs for `m1/auth-workspaces`, `m2/projects-milestones` and
-`m3/interactive-tables` in that order (after PR #1), then start
-**M4 — tasks + activity events** on a fresh branch from `main`, reusing `DataTable` for the
-task list (PLAN §12). UI polish (tweakcn theme presets, Magic UI-style micro-interactions)
+Start **M4 — tasks + activity events** on a fresh branch from `main`, reusing `DataTable`
+for the task list (PLAN §12). Open a PR per milestone so CI (including the e2e job) runs
+before merge; merges need a human click in GitHub — the Claude Code app refuses to press
+the merge button itself. UI polish (tweakcn theme presets, Magic UI-style micro-interactions)
 is queued for M6+ once the report views exist.
 
 ## Conventions
