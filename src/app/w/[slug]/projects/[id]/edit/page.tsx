@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { PageBody, PageHeader } from "@/components/page-header";
 import { requireWorkspace } from "@/lib/auth/dal";
-import { getWorkspaceMembers, memberLabel } from "@/lib/data/members";
+import { getPeople, isMyPerson, personOptions } from "@/lib/data/people";
 import { getDepartments, getProject } from "@/lib/data/projects";
 import type { ProjectStatus } from "@/lib/projects";
 import { createClient } from "@/lib/supabase/server";
@@ -22,12 +22,14 @@ export default async function EditProjectPage({
   const result = await getProject(supabase, ctx.workspace.id, id);
   if (!result) notFound();
   const { project } = result;
-  if (!ctx.isAdmin && project.owner_id !== ctx.user.id) redirect(`/w/${slug}/projects/${id}`);
 
-  const [departments, members] = await Promise.all([
+  const [departments, people] = await Promise.all([
     getDepartments(supabase, ctx.workspace.id),
-    getWorkspaceMembers(supabase, ctx.workspace.id),
+    getPeople(supabase, ctx.workspace.id),
   ]);
+  if (!ctx.isAdmin && !isMyPerson(people, project.owner_id, ctx.user.id)) {
+    redirect(`/w/${slug}/projects/${id}`);
+  }
   // Keep the project's current department selectable even if it was archived.
   const options = departments.filter((d) => !d.archived || d.id === project.department_id);
 
@@ -37,11 +39,12 @@ export default async function EditProjectPage({
       <PageBody>
         <ProjectForm
           action={updateProject.bind(null, slug, id)}
+          slug={slug}
           departments={options.map((d) => ({
             value: d.id,
             label: d.archived ? `${d.name} (archived)` : d.name,
           }))}
-          members={members.map((m) => ({ value: m.userId, label: memberLabel(m) }))}
+          people={personOptions(people)}
           initial={{
             name: project.name,
             departmentId: project.department_id,

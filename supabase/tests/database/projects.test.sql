@@ -30,7 +30,7 @@ insert into dept select id from i;
 create temp table p1 (id uuid);
 with i as (
   insert into public.projects (workspace_id, department_id, name, owner_id, rank)
-  values ((select ws from ctx), (select id from dept), 'P1', '11111111-1111-1111-1111-111111111111', 'a0')
+  values ((select ws from ctx), (select id from dept), 'P1', public.my_person_id((select ws from ctx)), 'a0')
   returning id
 )
 insert into p1 select id from i;
@@ -47,7 +47,7 @@ select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-2222222
 create temp table p2 (id uuid);
 with i as (
   insert into public.projects (workspace_id, department_id, name, owner_id, rank)
-  values ((select ws from ctx), (select id from dept), 'P2', '22222222-2222-2222-2222-222222222222', 'a1')
+  values ((select ws from ctx), (select id from dept), 'P2', public.my_person_id((select ws from ctx)), 'a1')
   returning id
 )
 insert into p2 select id from i;

@@ -113,6 +113,14 @@ export async function ensureWorkspace(owner: Client, member: Client): Promise<st
 export async function resetFixture(owner: Client, member: Client, workspaceId: string) {
   const { data: ownerUser } = await owner.auth.getUser();
   const ownerId = ownerUser.user!.id;
+  // Owners are people (docs/PLAN.md D31); the member trigger created this row.
+  const { data: ownerPerson } = await owner
+    .from("people")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", ownerId)
+    .single();
+  if (!ownerPerson) throw new Error("owner has no person row");
 
   await owner.from("projects").delete().eq("workspace_id", workspaceId);
   await owner.from("departments").delete().eq("workspace_id", workspaceId);
@@ -146,7 +154,7 @@ export async function resetFixture(owner: Client, member: Client, workspaceId: s
       workspace_id: workspaceId,
       department_id: deptId.get(p.department)!,
       name: p.name,
-      owner_id: ownerId,
+      owner_id: ownerPerson.id,
       rank: `a${i}`,
       created_by: ownerId,
     })),

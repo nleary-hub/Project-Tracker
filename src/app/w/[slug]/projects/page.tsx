@@ -7,6 +7,7 @@ import { PageBody, PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { requireWorkspace } from "@/lib/auth/dal";
 import { getWorkspaceMembers, memberLabel } from "@/lib/data/members";
+import { getPeople, myPersonId, personOptions } from "@/lib/data/people";
 import { getDepartments, listProjects, type ProjectListItem } from "@/lib/data/projects";
 import { getTableState, parseFilterState } from "@/lib/data/table-layouts";
 import { addDays, todayInTimezone } from "@/lib/projects";
@@ -29,10 +30,12 @@ export default async function ProjectsPage({
   const { workspace } = ctx;
   const supabase = await createClient();
 
-  const [departments, projects, members, state] = await Promise.all([
+  const [departments, projects, members, people, me, state] = await Promise.all([
     getDepartments(supabase, workspace.id),
     listProjects(supabase, workspace.id),
     getWorkspaceMembers(supabase, workspace.id),
+    getPeople(supabase, workspace.id),
+    myPersonId(supabase, workspace.id),
     getTableState(supabase, {
       workspaceId: workspace.id,
       userId: ctx.user.id,
@@ -73,7 +76,6 @@ export default async function ProjectsPage({
 
   const today = todayInTimezone(workspace.timezone);
   const dates = dateContext(today, addDays);
-  const memberOptions = members.map((m) => ({ value: m.userId, label: memberLabel(m) }));
   const lastLayoutChange =
     state.mode === "shared" && state.sharedChangedBy
       ? {
@@ -145,13 +147,13 @@ export default async function ProjectsPage({
           <ProjectsTable
             slug={slug}
             groups={groups}
-            members={memberOptions}
+            people={personOptions(people)}
             layout={layout}
             sort={sort}
             filters={filters}
             dates={dates}
             timeZone={workspace.timezone}
-            currentUserId={ctx.user.id}
+            currentPersonId={me}
             isAdmin={ctx.isAdmin}
             mode={state.mode}
             lastLayoutChange={lastLayoutChange}

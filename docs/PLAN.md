@@ -52,6 +52,7 @@ exists to feed it accurate data.
 | D28 | Row height | Compact / Default / Comfortable presets, plus dragging any row's bottom edge to set the height for all rows. Double-click the edge to fit the tallest text |
 | D29 | Hide from report | Admins can hide a project from reports, either until they turn it back on or for a single draft only. Non-admins can't see the control, the flag or that anything was hidden, and the database enforces this (see §6) |
 | D30 | Live layout updates | Deferred to v1.1: shared layout changes will appear instantly for everyone via Supabase Realtime (see §15) |
+| D31 | Owners and assignees | Project owners, milestone owners and task assignees are **people** in a workspace directory, not necessarily signed-in users. Every member gets a person row automatically (kept in sync with their profile); anyone can add a person by name and optional email so a department head who never logs in can own a project. "Owner edits" rights apply when the signed-in user is the person named as owner |
 
 ## 3. Stack
 
@@ -77,23 +78,30 @@ All tables carry `workspace_id` and are protected by RLS through an
 `workspace_role(workspace_id) in ('owner','admin')`.
 
 - **profiles** — `id` (auth user), `display_name`, `email`, `avatar_url`
+- **people** — `workspace_id`, `user_id` (null for someone who never signs in), `name`,
+  `email` (optional), `is_demo`. Members are inserted by trigger and follow their profile;
+  `owner_id` / `assignee_id` columns reference this table (D31)
 - **workspaces** — `name`, `slug`, `timezone`
 - **workspace_members** — `workspace_id`, `user_id`, `role` (owner | admin | member)
 - **workspace_invites** — `workspace_id`, `role`, `token`, `expires_at`, `accepted_by`, `accepted_at`
 - **departments** — `name`, `sort_order`, `archived_at`
-- **projects** — `department_id` (required), `name`, `description`, `owner_id`,
+- **projects** — `department_id` (required), `name`, `description`, `owner_id` (→ people),
   `status` (active | on_hold | completed | cancelled), `start_date`, `due_date`,
   `health_override` (null | on_track | at_risk | off_track), `health_override_reason`,
   `health_override_expires_at`
-- **milestones** — `project_id`, `name`, `due_date`, `owner_id`, `completed_at`, `sort_order`
+- **milestones** — `project_id`, `name`, `due_date`, `owner_id` (→ people), `completed_at`, `rank`
 - **tasks** — `project_id`, `milestone_id` (optional), `title`, `description`,
   `status` (todo | in_progress | blocked | done), `priority` (low | medium | high | urgent),
-  `assignee_id`, `due_date`, `completed_at`, `position`
+  `assignee_id` (→ people), `due_date`, `completed_at` (kept in step with `status` by trigger), `rank`
 - **project_updates** — `project_id`, `author_id`, `body`, `next_step` (optional text),
   `created_at`. Edits are allowed until the next report snapshot is taken.
-- **activity_events** — `project_id`, `actor_id`, `kind` (task_completed, milestone_completed,
-  milestone_date_changed, status_changed, health_overridden, …), `payload` jsonb, `created_at`.
-  Written by database triggers so the activity summary can't drift from the real data.
+- **activity_events** — `project_id`, `actor_id`, `kind` (project_created / status_changed /
+  owner_changed / department_changed / health_overridden; milestone_created / completed / reopened /
+  date_changed / deleted; task_created / completed / reopened / status_changed / assigned /
+  date_changed / deleted), `payload` jsonb (names and before/after values, so a line still reads
+  after the row is gone), `created_at`. Written only by database triggers (members can read,
+  nothing else can write) so the activity summary can't drift from the real data. Demo rows
+  don't log their creation.
 - **report_settings** (one per workspace) — `mode` (draft_approve | auto_send),
   `cadence_anchor_date`, `send_weekday`, `send_hour` (in workspace timezone),
   `recipients` text[], `reminder_days_before` (default 1),
@@ -351,9 +359,11 @@ attempt is recorded in `email_log`.
 | Action | Member | Project owner | Admin / Owner |
 |---|---|---|---|
 | View all projects and reports | ✓ | ✓ | ✓ |
-| Create and edit tasks | ✓ | ✓ | ✓ |
+| Create and edit tasks (delete: creator, assignee or a project editor) | ✓ | ✓ | ✓ |
 | Post a project update | – | ✓ (own projects) | ✓ |
 | Edit a project, its milestones, or override health | – | ✓ (own projects) | ✓ |
+| Add a person to the directory (an owner who never signs in) | ✓ | ✓ | ✓ |
+| Edit or remove people who aren't members | – | – | ✓ |
 | Create projects | ✓ | ✓ | ✓ |
 | Manage departments, members, invites, report settings | – | – | ✓ |
 | Reorder rows, columns, widths (shared mode) | ✓ | ✓ | ✓ |

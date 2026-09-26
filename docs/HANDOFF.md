@@ -90,6 +90,26 @@ superseded rather than merged.
     patches it to keep the App Router URL in sync but skips the sync when handed its own
     state object, so the next server-action refresh silently dropped the `f.*`/`sort` params.
 
+- **M4a — people directory + tasks/activity schema** on branch `m4/tasks-activity` (from `main`):
+  - Migration `20260926021044_people_directory.sql` (D31): `people` table; members get a
+    person row by trigger (synced from `profiles`); `projects.owner_id` and
+    `milestones.owner_id` now reference `people` (backfilled); `can_edit_project()` follows
+    `people.user_id`; `my_person_id(ws)`; `wipe_demo_data()` also removes demo people. RLS:
+    members read and add unlinked people, admins edit/delete them.
+  - Migration `20260926021257_tasks_activity.sql`: `tasks` (assignee → people, milestone must
+    be in the same project, `completed_at` follows `status`), `activity_events` written only by
+    triggers on projects / milestones / tasks (creation of demo rows is not logged), RPCs
+    `move_task` / `set_task_ranks`. `20260926021342_harden_trigger_functions.sql` revokes RPC
+    access to the SECURITY DEFINER trigger functions (Supabase advisor).
+  - App: `PersonSelect` (owner/assignee picker with "Add someone…" dialog) used by the project
+    form and milestone forms; Settings → **People** panel (list, add, edit, remove); demo data
+    now has four demo owners who never sign in and ~25 tasks; `src/lib/{people,tasks,activity}.ts`,
+    `src/lib/data/{people,tasks,activity}.ts`, `src/lib/schemas/{person,task}.ts` with unit tests;
+    pgTAP `supabase/tests/database/tasks.test.sql` (24 checks).
+  - **Not yet built (next PRs):** the tasks table on the project page, the activity feed, and
+    the dashboard's "my open tasks" — deliberately deferred until after the design refresh
+    Nick asked for (2026-09-26), so they're built once in the new look.
+
 ## External services (all $0 plans)
 
 | Service            | Details                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
