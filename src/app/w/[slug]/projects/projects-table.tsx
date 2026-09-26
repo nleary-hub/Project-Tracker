@@ -13,6 +13,7 @@ import { ProjectStatusBadge } from "@/components/project-status-badge";
 import { Badge } from "@/components/ui/badge";
 import type { ProjectListItem } from "@/lib/data/projects";
 import { formatDate } from "@/lib/format";
+import { type PersonOption, UNKNOWN_PERSON } from "@/lib/people";
 import { type ProjectStatus, PROJECT_STATUSES, PROJECT_STATUS_LABELS } from "@/lib/projects";
 import type { DateContext, FilterState } from "@/lib/table/filters";
 import type { SortRule, TableLayout } from "@/lib/table/layout";
@@ -29,23 +30,23 @@ import {
 export interface ProjectsTableProps {
   slug: string;
   groups: DataTableGroup<ProjectListItem>[];
-  members: { value: string; label: string }[];
+  people: PersonOption[];
   layout: TableLayout;
   sort: SortRule[];
   filters: FilterState;
   dates: DateContext;
   timeZone: string;
-  currentUserId: string;
+  currentPersonId: string | null;
   isAdmin: boolean;
   mode: "shared" | "split" | "personal";
   lastLayoutChange: LastLayoutChange | null;
 }
 
 export function ProjectsTable(props: ProjectsTableProps) {
-  const { slug, timeZone, dates, currentUserId, isAdmin, mode } = props;
-  const memberLabel = useMemo(
-    () => new Map(props.members.map((m) => [m.value, m.label])),
-    [props.members],
+  const { slug, timeZone, dates, currentPersonId, isAdmin, mode } = props;
+  const personName = useMemo(
+    () => new Map(props.people.map((p) => [p.value, p.label])),
+    [props.people],
   );
   const base = `/w/${slug}/projects`;
 
@@ -77,10 +78,10 @@ export function ProjectsTable(props: ProjectsTableProps) {
         accessor: (p) => p.owner_id,
         cell: (p) => (
           <span className={cn(!p.owner_id && "text-ink-muted")}>
-            {p.owner_id ? (memberLabel.get(p.owner_id) ?? "Former member") : "Unassigned"}
+            {p.owner_id ? (personName.get(p.owner_id) ?? UNKNOWN_PERSON) : "Unassigned"}
           </span>
         ),
-        enumOptions: props.members,
+        enumOptions: props.people,
         noneLabel: "Unassigned",
         defaultWidth: 160,
       },
@@ -168,7 +169,7 @@ export function ProjectsTable(props: ProjectsTableProps) {
         defaultHidden: true,
       },
     ],
-    [base, memberLabel, props.members, dates.today, timeZone],
+    [base, personName, props.people, dates.today, timeZone],
   );
 
   // docs/PLAN.md §10: every member may change layouts and row order (shared
@@ -179,9 +180,10 @@ export function ProjectsTable(props: ProjectsTableProps) {
       editLayout: true,
       reorderRows: true,
       reorderGroups: isAdmin,
-      moveRowToGroup: (p) => isAdmin || p.owner_id === currentUserId,
+      moveRowToGroup: (p) =>
+        isAdmin || (currentPersonId !== null && p.owner_id === currentPersonId),
     }),
-    [isAdmin, currentUserId],
+    [isAdmin, currentPersonId],
   );
 
   return (
@@ -209,7 +211,7 @@ export function ProjectsTable(props: ProjectsTableProps) {
             <ProjectStatusBadge status={p.status as ProjectStatus} />
           </div>
           <p className="mt-1 text-xs text-ink-secondary">
-            {p.owner_id ? (memberLabel.get(p.owner_id) ?? "Former member") : "Unassigned"}
+            {p.owner_id ? (personName.get(p.owner_id) ?? UNKNOWN_PERSON) : "Unassigned"}
             {p.nextMilestone && (
               <>
                 {" · "}

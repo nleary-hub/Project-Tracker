@@ -6,6 +6,7 @@ import * as z from "zod";
 
 import { type ActionResult, type ActionState, fail, succeed } from "@/lib/action-result";
 import { NotAuthorizedError, requireWorkspace, type WorkspaceContext } from "@/lib/auth/dal";
+import { myPersonId } from "@/lib/data/people";
 import { lastMilestoneRank, lastProjectRank } from "@/lib/data/projects";
 import { rankAfter } from "@/lib/rank";
 import { milestoneInputFromForm, projectInputFromForm } from "@/lib/schemas/project";
@@ -21,6 +22,8 @@ function invalid(error: z.ZodError): ActionResult<never> {
   return fail("Check the highlighted fields.", z.flattenError(error).fieldErrors);
 }
 
+// The owner is a person (docs/PLAN.md D31); "owner edits" means the signed-in
+// user is the person named as owner.
 async function requireProjectEditor(ctx: WorkspaceContext, projectId: string) {
   const supabase = await createClient();
   const { data: project } = await supabase
@@ -30,7 +33,10 @@ async function requireProjectEditor(ctx: WorkspaceContext, projectId: string) {
     .eq("id", projectId)
     .maybeSingle();
   if (!project) throw new NotAuthorizedError();
-  if (!ctx.isAdmin && project.owner_id !== ctx.user.id) throw new NotAuthorizedError();
+  if (!ctx.isAdmin) {
+    const me = await myPersonId(supabase, ctx.workspace.id);
+    if (!me || project.owner_id !== me) throw new NotAuthorizedError();
+  }
   return supabase;
 }
 

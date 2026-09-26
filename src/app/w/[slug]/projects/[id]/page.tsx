@@ -8,10 +8,11 @@ import { ProjectStatusBadge } from "@/components/project-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireWorkspace } from "@/lib/auth/dal";
-import { getWorkspaceMembers, memberLabel } from "@/lib/data/members";
+import { getPeople, isMyPerson, personOptions } from "@/lib/data/people";
 import { getDepartments, getProject } from "@/lib/data/projects";
 import { formatDate } from "@/lib/format";
 import { sortForDisplay } from "@/lib/milestones";
+import { personLabel } from "@/lib/people";
 import { type ProjectStatus, todayInTimezone } from "@/lib/projects";
 import { createClient } from "@/lib/supabase/server";
 
@@ -38,16 +39,15 @@ export default async function ProjectPage({ params }: PageProps<"/w/[slug]/proje
   if (!result) notFound();
   const { project, milestones } = result;
 
-  const [departments, members] = await Promise.all([
+  const [departments, people] = await Promise.all([
     getDepartments(supabase, workspace.id),
-    getWorkspaceMembers(supabase, workspace.id),
+    getPeople(supabase, workspace.id),
   ]);
   const department = departments.find((d) => d.id === project.department_id);
-  const memberById = new Map(members.map((m) => [m.userId, m]));
-  const owner = project.owner_id ? memberById.get(project.owner_id) : undefined;
-  const canEdit = ctx.isAdmin || project.owner_id === ctx.user.id;
+  const owner = people.find((p) => p.id === project.owner_id);
+  const canEdit = ctx.isAdmin || isMyPerson(people, project.owner_id, ctx.user.id);
   const today = todayInTimezone(workspace.timezone);
-  const memberOptions = members.map((m) => ({ value: m.userId, label: memberLabel(m) }));
+  const peopleOptions = personOptions(people);
 
   return (
     <>
@@ -62,7 +62,7 @@ export default async function ProjectPage({ params }: PageProps<"/w/[slug]/proje
               {department?.name ?? "No department"}
             </Link>
             {" · "}
-            {owner ? memberLabel(owner) : <span className="text-ink-muted">No owner</span>}
+            {owner ? owner.name : <span className="text-ink-muted">No owner</span>}
           </>
         }
         actions={
@@ -107,7 +107,7 @@ export default async function ProjectPage({ params }: PageProps<"/w/[slug]/proje
               slug={slug}
               projectId={id}
               milestones={sortForDisplay(milestones)}
-              members={memberOptions}
+              people={peopleOptions}
               canEdit={canEdit}
               today={today}
               timeZone={workspace.timezone}
@@ -128,7 +128,7 @@ export default async function ProjectPage({ params }: PageProps<"/w/[slug]/proje
                 <ProjectStatusBadge status={project.status as ProjectStatus} />
               </dd>
               <dt className="text-ink-muted">Owner</dt>
-              <dd className={owner ? "text-ink" : "text-ink-muted"}>{memberLabel(owner)}</dd>
+              <dd className={owner ? "text-ink" : "text-ink-muted"}>{personLabel(owner)}</dd>
               <dt className="text-ink-muted">Department</dt>
               <dd className="text-ink">
                 {department?.name ?? "—"}

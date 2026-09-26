@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ComingSoon, PageBody, PageHeader } from "@/components/page-header";
 import { SettingsNote, SettingsSection } from "@/components/settings-section";
 import { requireWorkspace } from "@/lib/auth/dal";
+import { getPeople } from "@/lib/data/people";
 import { ROLE_LABELS, type WorkspaceRole } from "@/lib/auth/roles";
 import { formatDate } from "@/lib/format";
 import { inviteListStatus } from "@/lib/invites";
@@ -13,6 +14,7 @@ import { AddDepartmentForm, DepartmentList, type DepartmentRow } from "./departm
 import { InvitesTable, NewInviteDialog, type InviteRow } from "./invites-panel";
 import { LayoutSharingForm } from "./layout-sharing-form";
 import { MembersTable, type MemberRow } from "./members-table";
+import { PeoplePanel, type PersonRow } from "./people-panel";
 import { DemoDataPanel } from "./demo-data-panel";
 import { WorkspaceNameForm } from "./workspace-name-form";
 
@@ -28,6 +30,7 @@ type InviteRecord = Pick<
 const SECTIONS = [
   { id: "workspace", label: "Workspace" },
   { id: "members", label: "Members" },
+  { id: "people", label: "People" },
   { id: "invites", label: "Invite links", adminOnly: true },
   { id: "departments", label: "Departments" },
   { id: "layout", label: "Layout sharing" },
@@ -116,6 +119,30 @@ export default async function SettingsPage({ params }: PageProps<"/w/[slug]/sett
 
   const layoutMode = settingsRes.data?.layout_sharing ?? "shared";
 
+  // People directory: everyone who can be named as owner or assignee.
+  const [people, ownerRefs, milestoneRefs, taskRefs] = await Promise.all([
+    getPeople(supabase, workspace.id),
+    supabase.from("projects").select("owner_id").eq("workspace_id", workspace.id),
+    supabase.from("milestones").select("owner_id").eq("workspace_id", workspace.id),
+    supabase.from("tasks").select("assignee_id").eq("workspace_id", workspace.id),
+  ]);
+  const referenceCount = new Map<string, number>();
+  for (const id of [
+    ...(ownerRefs.data ?? []).map((r) => r.owner_id),
+    ...(milestoneRefs.data ?? []).map((r) => r.owner_id),
+    ...(taskRefs.data ?? []).map((r) => r.assignee_id),
+  ]) {
+    if (id) referenceCount.set(id, (referenceCount.get(id) ?? 0) + 1);
+  }
+  const peopleRows: PersonRow[] = people.map((p) => ({
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    member: p.userId !== null,
+    isDemo: p.isDemo,
+    references: referenceCount.get(p.id) ?? 0,
+  }));
+
   let demoProjects = 0;
   if (isAdmin) {
     const { count } = await supabase
@@ -192,6 +219,14 @@ export default async function SettingsPage({ params }: PageProps<"/w/[slug]/sett
                 currentUserId={ctx.user.id}
                 isAdmin={isAdmin}
               />
+            </SettingsSection>
+
+            <SettingsSection
+              id="people"
+              title="People"
+              description="Everyone who can own a project or be assigned a task. Members are added automatically; add anyone else by name so they can be named without signing in."
+            >
+              <PeoplePanel slug={workspace.slug} people={peopleRows} isAdmin={isAdmin} />
             </SettingsSection>
 
             {isAdmin && (

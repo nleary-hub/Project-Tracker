@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { PersonSelect } from "@/components/person-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -29,16 +30,10 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { type ActionState, fieldError } from "@/lib/action-result";
 import { formatDate } from "@/lib/format";
 import { isOverdue } from "@/lib/milestones";
+import { type PersonOption, UNKNOWN_PERSON } from "@/lib/people";
 import { UNASSIGNED } from "@/lib/schemas/project";
 import { cn } from "@/lib/utils";
 
@@ -58,16 +53,11 @@ export interface MilestoneItem {
   rank: string;
 }
 
-export interface MemberOption {
-  value: string;
-  label: string;
-}
-
 export function MilestonesPanel({
   slug,
   projectId,
   milestones,
-  members,
+  people,
   canEdit,
   today,
   timeZone,
@@ -76,12 +66,12 @@ export function MilestonesPanel({
   projectId: string;
   /** Already sorted for display: open by due date, then completed. */
   milestones: MilestoneItem[];
-  members: MemberOption[];
+  people: PersonOption[];
   canEdit: boolean;
   today: string;
   timeZone: string;
 }) {
-  const memberLabel = new Map(members.map((m) => [m.value, m.label]));
+  const personName = new Map(people.map((p) => [p.value, p.label]));
   const nextId = milestones.find((m) => m.completed_at === null)?.id ?? null;
   const open = milestones.filter((m) => m.completed_at === null).length;
 
@@ -136,7 +126,7 @@ export function MilestonesPanel({
                     {m.owner_id && (
                       <span className="text-ink-muted">
                         {" "}
-                        · {memberLabel.get(m.owner_id) ?? "Former member"}
+                        · {personName.get(m.owner_id) ?? UNKNOWN_PERSON}
                       </span>
                     )}
                     {done && m.completed_at && (
@@ -149,7 +139,7 @@ export function MilestonesPanel({
                 </div>
                 {canEdit && (
                   <div className="flex gap-1">
-                    <EditMilestoneDialog slug={slug} milestone={m} members={members} />
+                    <EditMilestoneDialog slug={slug} milestone={m} people={people} />
                     <DeleteMilestoneButton slug={slug} milestone={m} />
                   </div>
                 )}
@@ -159,7 +149,7 @@ export function MilestonesPanel({
         </ol>
       )}
 
-      {canEdit && <AddMilestoneForm slug={slug} projectId={projectId} members={members} />}
+      {canEdit && <AddMilestoneForm slug={slug} projectId={projectId} people={people} />}
     </section>
   );
 }
@@ -193,20 +183,21 @@ function CompleteToggle({
 
 function MilestoneFields({
   idPrefix,
+  slug,
   state,
-  members,
+  people,
   initial,
 }: {
   idPrefix: string;
+  slug: string;
   state: ActionState;
-  members: MemberOption[];
+  people: PersonOption[];
   initial?: Pick<MilestoneItem, "name" | "due_date" | "owner_id">;
 }) {
   // Controlled so a validation error doesn't wipe the typed values.
   const [name, setName] = useState(initial?.name ?? "");
   const [dueDate, setDueDate] = useState(initial?.due_date ?? "");
   const [ownerId, setOwnerId] = useState(initial?.owner_id ?? UNASSIGNED);
-  const ownerItems = [{ value: UNASSIGNED, label: "Unassigned" }, ...members];
   const nameError = fieldError(state, "name");
   const dueError = fieldError(state, "dueDate");
   return (
@@ -239,23 +230,14 @@ function MilestoneFields({
         </Field>
         <Field>
           <FieldLabel htmlFor={`${idPrefix}-owner`}>Owner</FieldLabel>
-          <Select
+          <PersonSelect
+            id={`${idPrefix}-owner`}
             name="ownerId"
-            items={ownerItems}
+            slug={slug}
+            people={people}
             value={ownerId}
-            onValueChange={(v) => typeof v === "string" && setOwnerId(v)}
-          >
-            <SelectTrigger id={`${idPrefix}-owner`} className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ownerItems.map((m) => (
-                <SelectItem key={m.value} value={m.value}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={setOwnerId}
+          />
         </Field>
       </div>
     </FieldGroup>
@@ -265,11 +247,11 @@ function MilestoneFields({
 function AddMilestoneForm({
   slug,
   projectId,
-  members,
+  people,
 }: {
   slug: string;
   projectId: string;
-  members: MemberOption[];
+  people: PersonOption[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   // Remounting the fields is how a controlled form gets cleared after success.
@@ -296,7 +278,13 @@ function AddMilestoneForm({
       noValidate
       className="rounded-sm border border-border bg-surface-muted p-3"
     >
-      <MilestoneFields key={generation} idPrefix="new-milestone" state={state} members={members} />
+      <MilestoneFields
+        key={generation}
+        idPrefix="new-milestone"
+        slug={slug}
+        state={state}
+        people={people}
+      />
       <div className="mt-3">
         <Button type="submit" variant="outline" size="sm" disabled={pending}>
           <PlusIcon />
@@ -310,11 +298,11 @@ function AddMilestoneForm({
 function EditMilestoneDialog({
   slug,
   milestone,
-  members,
+  people,
 }: {
   slug: string;
   milestone: MilestoneItem;
-  members: MemberOption[];
+  people: PersonOption[];
 }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(async (prev: ActionState, formData: FormData) => {
@@ -346,8 +334,9 @@ function EditMilestoneDialog({
           <div className="my-4">
             <MilestoneFields
               idPrefix={`edit-${milestone.id}`}
+              slug={slug}
               state={state}
-              members={members}
+              people={people}
               initial={milestone}
             />
           </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
+import { PersonSelect } from "@/components/person-select";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type ActionState, fieldError } from "@/lib/action-result";
+import type { PersonOption } from "@/lib/people";
 import { PROJECT_STATUSES, PROJECT_STATUS_LABELS, type ProjectStatus } from "@/lib/projects";
 import { UNASSIGNED } from "@/lib/schemas/project";
 
@@ -41,15 +43,17 @@ const STATUS_ITEMS = PROJECT_STATUSES.map((s) => ({ value: s, label: PROJECT_STA
  */
 export function ProjectForm({
   action,
+  slug,
   departments,
-  members,
+  people,
   initial,
   cancelHref,
   submitLabel,
 }: {
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
+  slug: string;
   departments: ProjectFormOption[];
-  members: ProjectFormOption[];
+  people: PersonOption[];
   initial: ProjectFormValues;
   cancelHref: string;
   submitLabel: string;
@@ -64,7 +68,6 @@ export function ProjectForm({
   const set = <K extends keyof typeof values>(key: K, value: (typeof values)[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
   const err = (field: string) => fieldError(state, field);
-  const ownerItems = [{ value: UNASSIGNED, label: "Unassigned" }, ...members];
 
   return (
     <form action={formAction} noValidate className="max-w-2xl">
@@ -113,25 +116,19 @@ export function ProjectForm({
 
           <Field data-invalid={Boolean(err("ownerId"))}>
             <FieldLabel htmlFor="project-owner">Owner</FieldLabel>
-            <Select
+            <PersonSelect
+              id="project-owner"
               name="ownerId"
-              items={ownerItems}
+              slug={slug}
+              people={people}
               value={values.ownerId}
-              onValueChange={(v) => typeof v === "string" && set("ownerId", v)}
-            >
-              <SelectTrigger id="project-owner" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ownerItems.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(v) => set("ownerId", v)}
+              aria-invalid={Boolean(err("ownerId"))}
+            />
+            {err("ownerId") && <FieldError>{err("ownerId")}</FieldError>}
             <FieldDescription>
-              Posts updates and answers for the project in reports.
+              Answers for the project in reports. Doesn&apos;t have to be a member — pick &ldquo;Add
+              someone&rdquo; for a name that never signs in.
             </FieldDescription>
           </Field>
         </div>

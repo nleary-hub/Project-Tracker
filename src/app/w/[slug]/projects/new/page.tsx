@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { PageBody, PageHeader } from "@/components/page-header";
 import { requireWorkspace } from "@/lib/auth/dal";
-import { getWorkspaceMembers, memberLabel } from "@/lib/data/members";
+import { getPeople, myPersonId, personOptions } from "@/lib/data/people";
 import { getDepartments } from "@/lib/data/projects";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,9 +16,10 @@ export default async function NewProjectPage({ params }: PageProps<"/w/[slug]/pr
   const { slug } = await params;
   const ctx = await requireWorkspace(slug);
   const supabase = await createClient();
-  const [departments, members] = await Promise.all([
+  const [departments, people, me] = await Promise.all([
     getDepartments(supabase, ctx.workspace.id),
-    getWorkspaceMembers(supabase, ctx.workspace.id),
+    getPeople(supabase, ctx.workspace.id),
+    myPersonId(supabase, ctx.workspace.id),
   ]);
   const active = departments.filter((d) => !d.archived);
   if (active.length === 0) redirect(`/w/${slug}/projects`);
@@ -32,12 +33,13 @@ export default async function NewProjectPage({ params }: PageProps<"/w/[slug]/pr
       <PageBody>
         <ProjectForm
           action={createProject.bind(null, slug)}
+          slug={slug}
           departments={active.map((d) => ({ value: d.id, label: d.name }))}
-          members={members.map((m) => ({ value: m.userId, label: memberLabel(m) }))}
+          people={personOptions(people)}
           initial={{
             name: "",
             departmentId: active[0].id,
-            ownerId: ctx.user.id,
+            ownerId: me,
             status: "active",
             startDate: null,
             dueDate: null,
