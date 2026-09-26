@@ -2,35 +2,23 @@ import { PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import type { DataTableGroup } from "@/components/data-table/types";
 import { PageBody, PageHeader } from "@/components/page-header";
-import { ProjectStatusBadge } from "@/components/project-status-badge";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { requireWorkspace } from "@/lib/auth/dal";
 import { getWorkspaceMembers, memberLabel } from "@/lib/data/members";
 import { getDepartments, listProjects, type ProjectListItem } from "@/lib/data/projects";
-import { formatDate } from "@/lib/format";
-import { isOverdue } from "@/lib/milestones";
-import { type ProjectStatus, PROJECT_STATUSES, todayInTimezone } from "@/lib/projects";
-import { UNASSIGNED } from "@/lib/schemas/project";
+import { getTableState, parseFilterState } from "@/lib/data/table-layouts";
+import { addDays, todayInTimezone } from "@/lib/projects";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
+import { dateContext, hasFilterParams, readFiltersFromParams } from "@/lib/table/filters";
+import { decodeSort, layoutTargets, resolveLayout } from "@/lib/table/layout";
+import { byRank } from "@/lib/rank";
 
-import { ProjectsFilters } from "./projects-filters";
+import { PROJECT_COLUMNS, PROJECT_COLUMN_IDS } from "./projects-columns";
+import { ProjectsTable } from "./projects-table";
 
 export const metadata: Metadata = { title: "Projects" };
-
-function param(value: string | string[] | undefined): string | null {
-  return typeof value === "string" && value ? value : null;
-}
 
 export default async function ProjectsPage({
   params,
@@ -41,35 +29,63 @@ export default async function ProjectsPage({
   const { workspace } = ctx;
   const supabase = await createClient();
 
-  const [departments, projects, members] = await Promise.all([
+  const [departments, projects, members, state] = await Promise.all([
     getDepartments(supabase, workspace.id),
     listProjects(supabase, workspace.id),
     getWorkspaceMembers(supabase, workspace.id),
+    getTableState(supabase, {
+      workspaceId: workspace.id,
+      userId: ctx.user.id,
+      tableKey: "projects",
+    }),
   ]);
-  const memberById = new Map(members.map((m) => [m.userId, m]));
+
+  const targets = layoutTargets(state.mode);
+  const usePersonalOrder = targets.rowOrder === "personal";
+  const rankOf = (p: ProjectListItem) =>
+    usePersonalOrder ? (state.personalRanks.get(p.id) ?? p.rank) : p.rank;
+  const ranked = projects.map((p) => ({ ...p, rank: rankOf(p) }));
+
+  const groups: DataTableGroup<ProjectListItem>[] = departments
+    .map((d) => ({
+      id: d.id,
+      label: d.name,
+      rank: d.rank,
+      note: d.archived ? "archived" : undefined,
+      rows: ranked.filter((p) => p.department_id === d.id).sort(byRank),
+    }))
+    .filter((g) => !g.note || g.rows.length > 0);
+
+  // Filters: the URL wins; otherwise the person's saved filters.
+  const urlParams = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (typeof v === "string") urlParams.set(k, v);
+    else if (Array.isArray(v) && v[0]) urlParams.set(k, v[0]);
+  }
+  const filters = hasFilterParams(urlParams)
+    ? readFiltersFromParams(urlParams, PROJECT_COLUMNS)
+    : parseFilterState(state.savedFilters, PROJECT_COLUMNS);
+
+  const layout = resolveLayout(state.mode, state.shared, state.personal);
+  const sort = urlParams.has("sort")
+    ? decodeSort(urlParams.get("sort"), PROJECT_COLUMN_IDS)
+    : layout.sort;
+
   const today = todayInTimezone(workspace.timezone);
+  const dates = dateContext(today, addDays);
+  const memberOptions = members.map((m) => ({ value: m.userId, label: memberLabel(m) }));
+  const lastLayoutChange =
+    state.mode === "shared" && state.sharedChangedBy
+      ? {
+          by:
+            memberLabel(members.find((m) => m.userId === state.sharedChangedBy?.userId)) ||
+            "a former member",
+          at: state.sharedChangedBy.at,
+        }
+      : null;
 
-  const departmentFilter = param(sp.department);
-  const ownerFilter = param(sp.owner);
-  const statusFilter = param(sp.status);
-  const filtering = Boolean(departmentFilter || ownerFilter || statusFilter);
-
-  const visible = projects.filter(
-    (p) =>
-      (!departmentFilter || p.department_id === departmentFilter) &&
-      (!ownerFilter ||
-        (ownerFilter === UNASSIGNED ? p.owner_id === null : p.owner_id === ownerFilter)) &&
-      (!statusFilter ||
-        !(PROJECT_STATUSES as readonly string[]).includes(statusFilter) ||
-        p.status === statusFilter),
-  );
-
-  const groups = departments
-    .map((d) => ({ department: d, projects: visible.filter((p) => p.department_id === d.id) }))
-    .filter((g) => !g.department.archived || g.projects.length > 0);
-
-  const base = `/w/${slug}/projects`;
   const activeDepartments = departments.filter((d) => !d.archived);
+  const base = `/w/${slug}/projects`;
 
   return (
     <>
@@ -126,128 +142,23 @@ export default async function ProjectsPage({
             }
           />
         ) : (
-          <div className="flex flex-col gap-6">
-            <ProjectsFilters
-              departments={departments
-                .filter((d) => !d.archived)
-                .map((d) => ({ value: d.id, label: d.name }))}
-              members={members.map((m) => ({ value: m.userId, label: memberLabel(m) }))}
-            />
-
-            {visible.length === 0 && filtering && (
-              <p className="rounded-sm border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-ink-secondary">
-                No projects match these filters.
-              </p>
-            )}
-
-            {groups.map(({ department, projects: rows }) => (
-              <section key={department.id} aria-labelledby={`dept-${department.id}`}>
-                <div className="mb-2 flex items-baseline gap-2">
-                  <h2 id={`dept-${department.id}`} className="text-sm font-semibold text-ink">
-                    {department.name}
-                  </h2>
-                  {department.archived && (
-                    <span className="text-xs text-ink-muted uppercase">archived</span>
-                  )}
-                  <span className="text-xs text-ink-muted">{rows.length}</span>
-                </div>
-                {rows.length === 0 ? (
-                  <p className="rounded-sm border border-dashed border-border bg-surface px-3 py-3 text-sm text-ink-muted">
-                    No projects{filtering ? " match" : ""} in {department.name}.
-                  </p>
-                ) : (
-                  <div className="overflow-hidden rounded-sm border border-border bg-surface">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-surface-muted hover:bg-surface-muted">
-                          <TableHead>Project</TableHead>
-                          <TableHead className="w-44">Owner</TableHead>
-                          <TableHead className="w-32">Status</TableHead>
-                          <TableHead>Next milestone</TableHead>
-                          <TableHead className="w-28">Due</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {rows.map((p) => (
-                          <ProjectTableRow
-                            key={p.id}
-                            project={p}
-                            href={`${base}/${p.id}`}
-                            owner={memberLabel(p.owner_id ? memberById.get(p.owner_id) : undefined)}
-                            today={today}
-                            timeZone={workspace.timezone}
-                          />
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </section>
-            ))}
-          </div>
+          <ProjectsTable
+            slug={slug}
+            groups={groups}
+            members={memberOptions}
+            layout={layout}
+            sort={sort}
+            filters={filters}
+            dates={dates}
+            timeZone={workspace.timezone}
+            currentUserId={ctx.user.id}
+            isAdmin={ctx.isAdmin}
+            mode={state.mode}
+            lastLayoutChange={lastLayoutChange}
+          />
         )}
       </PageBody>
     </>
-  );
-}
-
-function ProjectTableRow({
-  project,
-  href,
-  owner,
-  today,
-  timeZone,
-}: {
-  project: ProjectListItem;
-  href: string;
-  owner: string;
-  today: string;
-  timeZone: string;
-}) {
-  const next = project.nextMilestone;
-  const overdue = next ? isOverdue(next, today) : false;
-  return (
-    <TableRow>
-      <TableCell>
-        <Link href={href} className="font-medium text-ink hover:underline">
-          {project.name}
-        </Link>
-        {project.is_demo && (
-          <Badge variant="outline" className="ml-2 align-middle">
-            Demo
-          </Badge>
-        )}
-      </TableCell>
-      <TableCell className={cn(!project.owner_id && "text-ink-muted")}>{owner}</TableCell>
-      <TableCell>
-        <ProjectStatusBadge status={project.status as ProjectStatus} />
-      </TableCell>
-      <TableCell className="max-w-64">
-        {next ? (
-          <span className="flex flex-col">
-            <span className="truncate">{next.name}</span>
-            {next.due_date && (
-              <span
-                className={cn(
-                  "text-xs",
-                  overdue ? "font-medium text-health-off-track" : "text-ink-muted",
-                )}
-              >
-                {overdue ? "Overdue · " : ""}
-                {formatDate(next.due_date, timeZone)}
-              </span>
-            )}
-          </span>
-        ) : (
-          <span className="text-ink-muted">
-            {project.status === "active" ? "No open milestones" : "—"}
-          </span>
-        )}
-      </TableCell>
-      <TableCell className="text-ink-secondary">
-        {project.due_date ? formatDate(project.due_date, timeZone) : "—"}
-      </TableCell>
-    </TableRow>
   );
 }
 

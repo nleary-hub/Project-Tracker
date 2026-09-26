@@ -62,7 +62,7 @@ exists to feed it accurate data.
 | Data / Auth | Supabase Postgres + Auth (Google), with Row Level Security (RLS) on every table |
 | Validation | Zod, shared between forms and server actions |
 | PDF | `@react-pdf/renderer` (no headless browser needed, fits serverless limits) |
-| Tables | TanStack Table (sorting, filtering, column order, sizing, visibility) with virtualized rows via TanStack Virtual |
+| Tables | TanStack Table v8 (sorting, filtering, column order, sizing, visibility). Row virtualization (TanStack Virtual) is deferred until a workspace's row counts need it — grouped tables with a few hundred rows render fine without it, and virtualization complicates drag-and-drop and row-height drag |
 | Drag & drop | dnd-kit (pointer, touch and keyboard sensors, screen-reader announcements) + its sortable/animation utilities |
 | Charts | Custom SVG components with `d3-scale`. The chart layout code is shared by the web page and the PDF, so the two can't drift apart (see §7) |
 | Excel | `exceljs` |
