@@ -61,9 +61,13 @@ select is((select count(*) from public.people where workspace_id = (select ws fr
 -- Projects owned by a non-user, and tasks
 -- ---------------------------------------------------------------------------
 select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
+-- Departments are admin-only, so Alice (owner) adds the one the tests use.
+reset role;
 create temp table dept (id uuid);
 with i as (insert into public.departments (workspace_id, name, rank) values ((select ws from ctx), 'Ops', 'a0') returning id)
 insert into dept select id from i;
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
 
 create temp table p1 (id uuid);
 with i as (
