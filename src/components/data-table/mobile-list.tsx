@@ -123,7 +123,7 @@ export function MobileList<Row>({
       </div>
 
       {total === 0 ? (
-        <p className="rounded-sm border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-ink-secondary">
+        <p className="rounded-xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
           {emptyMessage}
         </p>
       ) : (
@@ -131,9 +131,9 @@ export function MobileList<Row>({
           .filter((g) => g.rows.length > 0)
           .map(({ group, rows }) => (
             <section key={group.id} aria-label={group.label} className="flex flex-col gap-2">
-              <h2 className="flex items-baseline gap-2 text-sm font-semibold text-ink">
+              <h2 className="flex items-baseline gap-2 text-sm font-semibold text-foreground">
                 {group.label}
-                <span className="text-xs font-normal text-ink-muted">{rows.length}</span>
+                <span className="text-xs font-normal text-muted-foreground">{rows.length}</span>
               </h2>
               <ul className="flex flex-col gap-2">
                 {rows.map((row, i) => (

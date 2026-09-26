@@ -7,42 +7,38 @@ import { cn } from "@/lib/utils";
 
 import { NAV_ITEMS, isActive, navHref } from "./nav-items";
 
+/** Vertical nav list used inside the phone menu sheet. */
 export function NavLinks({
   workspaceSlug,
-  orientation = "horizontal",
   onNavigate,
 }: {
   workspaceSlug: string;
-  orientation?: "horizontal" | "vertical";
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const vertical = orientation === "vertical";
 
   return (
-    <ul className={cn("flex", vertical ? "flex-col gap-1" : "items-stretch gap-1")}>
+    <ul className="flex flex-col gap-0.5">
       {NAV_ITEMS.map((item) => {
         const active = isActive(pathname, workspaceSlug, item.segment);
         const Icon = item.icon;
         return (
-          <li key={item.label} className="flex">
+          <li key={item.label}>
             <Link
               href={navHref(workspaceSlug, item.segment)}
               aria-current={active ? "page" : undefined}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-2 text-sm font-medium transition-colors",
-                vertical ? "w-full rounded-sm px-3 py-2" : "border-b-2 px-3 pt-0.5",
+                "flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
                 active
-                  ? vertical
-                    ? "bg-white/10 text-white"
-                    : "border-white text-white"
-                  : vertical
-                    ? "text-white/75 hover:bg-white/5 hover:text-white"
-                    : "border-transparent text-white/75 hover:text-white",
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
               )}
             >
-              <Icon className="size-4" aria-hidden="true" />
+              <Icon
+                className={cn("size-[18px]", active ? "text-brand" : "text-sidebar-foreground/70")}
+                aria-hidden="true"
+              />
               {item.label}
             </Link>
           </li>

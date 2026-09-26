@@ -1,75 +1,98 @@
 "use client";
 
-import { CheckIcon, LogOutIcon } from "lucide-react";
-import Link from "next/link";
+import { LogOutIcon, MoreHorizontalIcon } from "lucide-react";
 import { useTransition } from "react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { signOut } from "@/lib/auth/actions";
-import type { Profile, WorkspaceSummary } from "@/lib/auth/dal";
+import type { Profile } from "@/lib/auth/dal";
 import { initialsOf } from "@/lib/initials";
+import { cn } from "@/lib/utils";
 
-export function AccountMenu({
-  profile,
-  workspaces,
-  currentSlug,
-}: {
-  profile: Profile;
-  workspaces: WorkspaceSummary[];
-  currentSlug: string;
-}) {
+/**
+ * Who's signed in, with sign-out. `compact` shows only the avatar (collapsed
+ * sidebar and the phone top bar); otherwise the name and email sit beside it.
+ */
+export function AccountMenu({ profile, compact = false }: { profile: Profile; compact?: boolean }) {
   const [pending, startTransition] = useTransition();
   const name = profile.display_name || profile.email;
+
+  const avatar = (
+    <Avatar size="sm" className="ring-1 ring-border">
+      <AvatarImage src={profile.avatar_url ?? undefined} alt="" />
+      <AvatarFallback className="bg-brand-soft text-[11px] font-semibold text-brand">
+        {initialsOf(profile.display_name, profile.email)}
+      </AvatarFallback>
+    </Avatar>
+  );
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full text-white hover:bg-white/10 hover:text-white aria-expanded:bg-white/15 aria-expanded:text-white"
-            aria-label="Account menu"
-          />
+          compact ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full aria-expanded:bg-sidebar-accent/60"
+              aria-label="Account menu"
+            />
+          ) : (
+            <button
+              type="button"
+              aria-label="Account menu"
+              className={cn(
+                "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left transition-colors outline-none hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring/60 aria-expanded:bg-sidebar-accent/60",
+              )}
+            />
+          )
         }
       >
-        <Avatar size="sm">
-          <AvatarImage src={profile.avatar_url ?? undefined} alt="" />
-          <AvatarFallback className="bg-white/15 text-white">
-            {initialsOf(profile.display_name, profile.email)}
-          </AvatarFallback>
-        </Avatar>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <div className="px-1.5 py-1.5">
-          <p className="truncate text-sm font-medium text-foreground">{name}</p>
-          {profile.display_name && (
-            <p className="truncate text-xs text-muted-foreground">{profile.email}</p>
-          )}
-        </div>
-        {workspaces.length > 1 && (
+        {avatar}
+        {!compact && (
           <>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
-              {workspaces.map((w) => (
-                <DropdownMenuItem key={w.id} render={<Link href={`/w/${w.slug}`} />}>
-                  <span className="truncate">{w.name}</span>
-                  {w.slug === currentSlug && <CheckIcon className="ml-auto" />}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block truncate text-[13px] font-medium text-foreground">{name}</span>
+              {profile.display_name && (
+                <span className="block truncate text-[11px] text-muted-foreground">
+                  {profile.email}
+                </span>
+              )}
+            </span>
+            <MoreHorizontalIcon
+              className="size-4 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
           </>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align={compact ? "end" : "start"}
+        side={compact ? "right" : "top"}
+        className="w-64"
+      >
+        <div className="flex items-center gap-2.5 px-1.5 py-1.5">
+          {avatar}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-foreground">{name}</p>
+            {profile.display_name && (
+              <p className="truncate text-xs text-muted-foreground">{profile.email}</p>
+            )}
+          </div>
+        </div>
+        {compact && (
+          <div className="px-1.5 pb-1.5">
+            <ThemeToggle className="w-full justify-between *:flex-1" />
+          </div>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={pending} onClick={() => startTransition(() => signOut())}>

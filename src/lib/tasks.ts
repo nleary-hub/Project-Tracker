@@ -45,3 +45,6 @@ export function isTaskOverdue(task: TaskLike, today: string): boolean {
 export function prioritySortKey(priority: TaskPriority): string {
   return String(TASK_PRIORITY_WEIGHT[priority]);
 }
+
+/** Group id used by task tables for tasks that have no milestone. */
+export const NO_MILESTONE_GROUP = "none";

@@ -46,7 +46,7 @@ export function CreateWorkspaceForm({ origin }: { origin: string }) {
         <Field data-invalid={Boolean(slugError)}>
           <FieldLabel htmlFor="slug">URL name</FieldLabel>
           <div className="flex items-center gap-1.5">
-            <span className="text-sm whitespace-nowrap text-ink-muted">{origin}/w/</span>
+            <span className="text-sm whitespace-nowrap text-muted-foreground">{origin}/w/</span>
             <Input
               id="slug"
               name="slug"

@@ -74,15 +74,17 @@ export function LayoutSharingForm({
           <label
             key={option.value}
             className={cn(
-              "flex gap-3 rounded-sm border bg-surface p-3 transition-colors",
-              isAdmin ? "cursor-pointer hover:bg-surface-muted" : "cursor-default",
+              "flex gap-3 rounded-sm border bg-card p-3 transition-colors",
+              isAdmin ? "cursor-pointer hover:bg-muted/40" : "cursor-default",
               selected ? "border-brand ring-1 ring-brand" : "border-border",
             )}
           >
             <RadioGroupItem value={option.value} className="mt-0.5" />
             <span className="min-w-0">
-              <span className="block text-sm font-medium text-ink">{option.title}</span>
-              <span className="mt-0.5 block text-sm text-ink-secondary">{option.description}</span>
+              <span className="block text-sm font-medium text-foreground">{option.title}</span>
+              <span className="mt-0.5 block text-sm text-muted-foreground">
+                {option.description}
+              </span>
             </span>
           </label>
         );

@@ -70,7 +70,7 @@ export function ProjectForm({
   const err = (field: string) => fieldError(state, field);
 
   return (
-    <form action={formAction} noValidate className="max-w-2xl">
+    <form action={formAction} noValidate className="panel max-w-2xl p-5 md:p-6">
       <FieldGroup>
         <Field data-invalid={Boolean(err("name"))}>
           <FieldLabel htmlFor="project-name">Name</FieldLabel>

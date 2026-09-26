@@ -94,7 +94,7 @@ export function HeaderCell<Item, Row>({
       scope="col"
       aria-sort={ariaSort}
       className={cn(
-        "group/th relative h-9 border-b border-border bg-surface-muted px-0 text-left text-xs font-semibold tracking-wide text-ink-secondary uppercase select-none",
+        "group/th relative h-10 border-b border-border/80 bg-muted/40 px-0 text-left text-[12px] font-medium text-muted-foreground backdrop-blur-sm select-none",
         isDragging && "z-10 opacity-40",
       )}
       style={{
@@ -228,7 +228,7 @@ export function HeaderCell<Item, Row>({
           onDoubleClick={onAutoFit}
           className={cn(
             "absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize touch-none select-none",
-            "after:absolute after:inset-y-2 after:right-0.5 after:w-px after:bg-border group-hover/th:after:bg-ink-muted",
+            "after:absolute after:inset-y-2.5 after:right-0.5 after:w-px after:bg-border/70 group-hover/th:after:bg-muted-foreground",
             header.column.getIsResizing() && "after:bg-brand",
           )}
         />

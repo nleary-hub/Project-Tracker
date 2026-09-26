@@ -106,9 +106,27 @@ superseded rather than merged.
     now has four demo owners who never sign in and ~25 tasks; `src/lib/{people,tasks,activity}.ts`,
     `src/lib/data/{people,tasks,activity}.ts`, `src/lib/schemas/{person,task}.ts` with unit tests;
     pgTAP `supabase/tests/database/tasks.test.sql` (24 checks).
-  - **Not yet built (next PRs):** the tasks table on the project page, the activity feed, and
-    the dashboard's "my open tasks" — deliberately deferred until after the design refresh
-    Nick asked for (2026-09-26), so they're built once in the new look.
+- **Design refresh + M4b (tasks UI, activity, dashboard)** on branch `design/refresh` (from
+  the M4a tip), per Nick's 2026-09-26 request for a clean, modern, polished-SaaS interface
+  (D32, PLAN §7):
+  - Tokens rewritten in OKLCH in `src/app/globals.css` with a full `.dark` set; Geist fonts;
+    `.panel` / `.panel-hover` utilities; layered `--shadow-*`; reduced-motion kill switch.
+  - Shell: `AppSidebar` (collapsible, cookie-persisted via `sidebar-state.ts`, workspace
+    switcher, Motion `layoutId` active indicator, theme toggle, account menu) +
+    `MobileTopBar` with a sheet menu; `template.tsx` fades page content in; `ThemeProvider`
+    (next-themes, class strategy) in the root layout.
+  - Pages: dashboard rebuilt (greeting, four KPI tiles that count up, My tasks with optimistic
+    complete, Upcoming milestones, workspace activity feed); project page rebuilt (breadcrumb
+    header, **Tasks** DataTable grouped by milestone with inline status menu, checkbox
+    complete, quick-add row, new/edit dialogs, ⋯ delete; milestones; Details + **Activity**
+    panels); login page with a product panel; settings sections, forms and lists restyled;
+    DataTable chrome restyled (toolbar, header, group bands, hover).
+  - Shared pieces: `Panel`/`EmptyNote`, `ActivityFeed`, `TaskStatusBadge`/`PriorityBadge`,
+    `StatTile`, `MyTasksPanel`, `table-layout-actions.ts` (layout/filter persistence for any
+    table key; the projects actions delegate to it), `task-actions.ts` (create/update/status/
+    delete/move/reorder), `DataTable` gained `confirmGroupMove` and `moveDeniedMessage`.
+  - Verified in the browser: quick-add → task appears, status menu → In progress, checkbox →
+    Done, each logged in the activity feed; dark mode, phone layout and the login page.
 
 ## External services (all $0 plans)
 
@@ -156,10 +174,16 @@ superseded rather than merged.
 
 ## Recommended next step
 
-Start **M4 — tasks + activity events** on a fresh branch from `main`, reusing `DataTable`
-for the task list (PLAN §12). Open a PR per milestone so CI (including the e2e job) runs
-before merge; merges need a human click in GitHub — the Claude Code app refuses to press
-the merge button itself. UI polish (tweakcn theme presets, Magic UI-style micro-interactions)
+Merge [PR #4](https://github.com/nleary-hub/Project-Tracker/pull/4) (M4a) and then the
+design-refresh PR (stacked on it), both with **Rebase and merge**, then start **M5 — project
+updates + health engine** on a fresh branch from `main` (PLAN §5, §12), building its screens
+in the refreshed design. Open a PR per milestone so CI (including the e2e job) runs before
+merge; merges need a human click in GitHub — the Claude Code app refuses to press the merge
+button itself.
+
+Design follow-ups worth doing in M5–M6 rather than now: a Playwright spec for the tasks table
+(reuse the projects drag helpers), skeleton loading states for the dashboard panels, and
+branding (logo + accent) once the report views exist. UI polish (tweakcn theme presets, Magic UI-style micro-interactions)
 is queued for M6+ once the report views exist.
 
 ## Conventions

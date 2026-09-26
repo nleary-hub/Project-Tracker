@@ -96,16 +96,20 @@ export function DepartmentList({
   return (
     <div className="flex flex-col gap-4">
       {active.length === 0 ? (
-        <p className="rounded-sm border border-dashed border-border bg-surface px-4 py-6 text-center text-sm text-ink-secondary">
+        <p className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
           No departments yet. Every project belongs to exactly one, so add the first before creating
           projects.
         </p>
       ) : (
-        <ol className="divide-y divide-border overflow-hidden rounded-sm border border-border bg-surface">
+        <ol className="divide-y divide-border overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
           {active.map((d, i) => (
             <li key={d.id} className="flex items-center gap-3 px-3 py-2">
-              <span className="w-6 text-right text-xs text-ink-muted tabular-nums">{i + 1}</span>
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{d.name}</span>
+              <span className="w-6 text-right text-xs text-muted-foreground tabular-nums">
+                {i + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                {d.name}
+              </span>
               {isAdmin && (
                 <div className="flex gap-1">
                   <RenameDepartmentDialog slug={slug} department={d} />
@@ -121,16 +125,16 @@ export function DepartmentList({
         <div>
           <button
             type="button"
-            className="text-sm text-ink-secondary underline-offset-4 hover:underline"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
             onClick={() => setShowArchived((v) => !v)}
             aria-expanded={showArchived}
           >
             {showArchived ? "Hide" : "Show"} archived ({archived.length})
           </button>
           {showArchived && (
-            <ul className="mt-2 divide-y divide-border overflow-hidden rounded-sm border border-border bg-surface">
+            <ul className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
               {archived.map((d) => (
-                <li key={d.id} className="flex items-center gap-3 px-3 py-2 text-ink-muted">
+                <li key={d.id} className="flex items-center gap-3 px-3 py-2 text-muted-foreground">
                   <span className="min-w-0 flex-1 truncate text-sm">{d.name}</span>
                   {isAdmin && <RestoreDepartmentButton slug={slug} department={d} />}
                 </li>

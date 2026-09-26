@@ -144,6 +144,10 @@ export interface DataTableProps<Row> {
   lastLayoutChange?: LastLayoutChange | null;
   renderCard: (row: Row) => ReactNode;
   emptyMessage: string;
+  /** Ask before moving a row into another group (default true). */
+  confirmGroupMove?: boolean;
+  /** Toast shown when permissions.moveRowToGroup says no. */
+  moveDeniedMessage?: string;
   onLayoutChange: (patch: Partial<TableLayout>) => Promise<ActionState>;
   onFiltersChange: (filters: FilterState) => Promise<ActionState>;
   onRowMove: (move: RowMove) => Promise<ActionState>;
@@ -667,11 +671,16 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
 
     if (toGroupId !== item.groupId) {
       if (!permissions.moveRowToGroup(item.row)) {
-        toast.error("Only the project owner or an admin can move it to another department.");
+        toast.error(
+          props.moveDeniedMessage ??
+            "Only the project owner or an admin can move it to another department.",
+        );
         return;
       }
-      setPendingMove({ item, toGroupId, targetIds, targetIndex });
-      return;
+      if (props.confirmGroupMove !== false) {
+        setPendingMove({ item, toGroupId, targetIds, targetIndex });
+        return;
+      }
     }
     commitRowMove(item, toGroupId, targetIds, targetIndex);
   }
@@ -865,8 +874,8 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
   const totalVisible = visibleRows.length;
 
   return (
-    <div className="flex flex-col gap-3" data-testid="data-table" data-hydrated={hydrated}>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-2.5" data-testid="data-table" data-hydrated={hydrated}>
+      <div className="flex min-h-8 flex-wrap items-center gap-2">
         <FilterChips
           columns={columns}
           filters={filters}
@@ -875,7 +884,10 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
         />
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {lastLayoutChange && permissions.editLayout && (
-            <span className="text-xs text-ink-muted" data-testid="layout-last-changed">
+            <span
+              className="hidden text-xs text-muted-foreground lg:inline"
+              data-testid="layout-last-changed"
+            >
               Layout last changed by {lastLayoutChange.by}, {relativeTime(lastLayoutChange.at)}
             </span>
           )}
@@ -890,7 +902,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
             onValueChange={changeDensity}
             disabled={!permissions.editLayout}
           >
-            <SelectTrigger size="sm" aria-label="Row height" className="bg-surface">
+            <SelectTrigger size="sm" aria-label="Row height" className="bg-card shadow-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -902,7 +914,9 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
             </SelectContent>
           </Select>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+            <DropdownMenuTrigger
+              render={<Button variant="outline" size="sm" className="shadow-xs" />}
+            >
               <Columns3Icon />
               Columns
             </DropdownMenuTrigger>
@@ -960,7 +974,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
       >
         <div
           ref={wrapperRef}
-          className="relative overflow-x-auto rounded-sm border border-border bg-surface"
+          className="scroll-quiet relative overflow-x-auto rounded-xl border border-border/80 bg-card shadow-xs"
         >
           <DragMarker marker={marker} />
           <table
@@ -1041,7 +1055,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
                           <tr>
                             <td
                               colSpan={visibleColumnIds.length}
-                              className="px-3 py-2 text-xs text-ink-muted"
+                              className="px-3 py-2 text-xs text-muted-foreground"
                               style={{ height: rowHeight }}
                             >
                               {filtering
@@ -1072,7 +1086,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
             </SortableContext>
           </table>
           {totalVisible === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-ink-secondary">
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">
               {filtering ? "No rows match these filters." : emptyMessage}
             </p>
           )}
@@ -1082,7 +1096,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
           {activeItem && (
             <div
               className={cn(
-                "flex items-center rounded-sm border border-border bg-surface shadow-lg ring-1 ring-brand/30",
+                "flex items-center rounded-xl border border-border/80 bg-card shadow-lg shadow-xs ring-1 ring-brand/30",
                 !reduceMotion && "scale-[1.02]",
               )}
               style={{ height: rowHeight, width: totalWidth, opacity: 0.92 }}
@@ -1102,17 +1116,17 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
             </div>
           )}
           {active?.type === DND_TYPES.column && (
-            <div className="rounded-sm border border-border bg-surface-muted px-2 py-1.5 text-xs font-semibold tracking-wide text-ink-secondary uppercase shadow-lg">
+            <div className="rounded-xl border border-border/80 bg-muted/40 px-2 py-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase shadow-lg shadow-xs">
               {columnById.get(active.columnId)?.header}
             </div>
           )}
           {active?.type === DND_TYPES.group && (
             <div
-              className="flex items-center gap-2 rounded-sm border border-border bg-surface-muted px-3 py-2 text-sm font-semibold text-ink shadow-lg"
+              className="flex items-center gap-2 rounded-xl border border-border/80 bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground shadow-lg shadow-xs"
               style={{ width: totalWidth }}
             >
               {groupById.get(active.groupId)?.label}
-              <span className="text-xs font-normal text-ink-muted">
+              <span className="text-xs font-normal text-muted-foreground">
                 {(rowsByGroup.get(active.groupId) ?? []).length} rows
               </span>
             </div>

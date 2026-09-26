@@ -16,7 +16,7 @@ export default async function AuthErrorPage({ searchParams }: PageProps<"/auth/e
       description="Google didn't return a valid sign-in. This usually happens when the window was closed early or the link was reused."
     >
       {reason && (
-        <p className="mb-4 rounded-sm border border-border bg-surface-muted px-3 py-2 font-mono text-xs text-ink-secondary">
+        <p className="mb-4 rounded-xl border border-border/80 bg-muted/40 px-3 py-2 font-mono text-xs text-muted-foreground shadow-xs">
           {reason}
         </p>
       )}

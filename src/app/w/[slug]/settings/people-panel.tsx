@@ -63,7 +63,7 @@ export function PeoplePanel({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-ink-secondary">
+        <p className="text-sm text-muted-foreground">
           {members.length} {members.length === 1 ? "member" : "members"} and {external.length}{" "}
           {external.length === 1 ? "person" : "people"} who don&apos;t sign in.
         </p>
@@ -80,23 +80,23 @@ export function PeoplePanel({
       </div>
 
       {people.length === 0 ? (
-        <p className="rounded-sm border border-dashed border-border bg-surface px-4 py-6 text-center text-sm text-ink-secondary">
+        <p className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
           Nobody yet.
         </p>
       ) : (
-        <ul className="divide-y divide-border overflow-hidden rounded-sm border border-border bg-surface">
+        <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
           {people.map((p) => (
             <li key={p.id} className="flex items-center gap-3 px-3 py-2">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-medium text-ink">{p.name}</span>
+                  <span className="truncate text-sm font-medium text-foreground">{p.name}</span>
                   {p.member ? (
                     <Badge variant="secondary">Member</Badge>
                   ) : (
                     p.isDemo && <Badge variant="outline">Demo</Badge>
                   )}
                 </div>
-                <p className="truncate text-xs text-ink-muted">
+                <p className="truncate text-xs text-muted-foreground">
                   {p.email ?? "No email"}
                   {p.references > 0 && (
                     <>
