@@ -1,4 +1,4 @@
-import { ChevronRightIcon, PencilIcon } from "lucide-react";
+import { ArrowLeftIcon, ChevronRightIcon, PencilIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,13 +12,14 @@ import { Button } from "@/components/ui/button";
 import type { DataTableGroup } from "@/components/data-table/types";
 import { requireWorkspace } from "@/lib/auth/dal";
 import { listProjectActivity } from "@/lib/data/activity";
+import { listProjectUpdates } from "@/lib/data/project-updates";
 import { getPeople, isMyPerson, personOptions } from "@/lib/data/people";
 import { getDepartments, getProject } from "@/lib/data/projects";
 import { getTableState, parseFilterState } from "@/lib/data/table-layouts";
 import { listProjectTasks, type TaskRow } from "@/lib/data/tasks";
 import { getWorkspaceMembers, memberLabel } from "@/lib/data/members";
 import { formatDate, formatDateTime, timeAgo } from "@/lib/format";
-import { sortForDisplay } from "@/lib/milestones";
+import { nextMilestone, sortForDisplay } from "@/lib/milestones";
 import { personLabel } from "@/lib/people";
 import { type ProjectStatus, addDays, todayInTimezone } from "@/lib/projects";
 import { byRank } from "@/lib/rank";
@@ -26,11 +27,13 @@ import { createClient } from "@/lib/supabase/server";
 import { dateContext, hasFilterParams, readFiltersFromParams } from "@/lib/table/filters";
 import { decodeSort, layoutTargets, resolveLayout } from "@/lib/table/layout";
 import { NO_MILESTONE_GROUP } from "@/lib/tasks";
+import { cn } from "@/lib/utils";
 
 import { MilestonesPanel } from "./milestones-panel";
 import { ProjectMenu } from "./project-menu";
 import { TASK_COLUMNS, TASK_COLUMN_IDS } from "./tasks-columns";
 import { NewTaskButton, TasksTable } from "./tasks-table";
+import { UpdatesPanel } from "./updates-panel";
 
 export async function generateMetadata({
   params,
@@ -55,12 +58,13 @@ export default async function ProjectPage({
   if (!result) notFound();
   const { project, milestones } = result;
 
-  const [departments, people, members, tasks, activity, tableState] = await Promise.all([
+  const [departments, people, members, tasks, activity, updates, tableState] = await Promise.all([
     getDepartments(supabase, workspace.id),
     getPeople(supabase, workspace.id),
     getWorkspaceMembers(supabase, workspace.id),
     listProjectTasks(supabase, id),
     listProjectActivity(supabase, id),
+    listProjectUpdates(supabase, id),
     getTableState(supabase, { workspaceId: workspace.id, userId: ctx.user.id, tableKey: "tasks" }),
   ]);
   const department = departments.find((d) => d.id === project.department_id);
@@ -120,6 +124,7 @@ export default async function ProjectPage({
         }
       : null;
   const milestoneOptions = sortedMilestones.map((m) => ({ value: m.id, label: m.name }));
+  const upcoming = nextMilestone(milestones);
   const openTasks = tasks.filter((t) => t.status !== "done").length;
 
   return (
@@ -127,9 +132,16 @@ export default async function ProjectPage({
       <PageHeader
         eyebrow={
           <nav aria-label="Breadcrumb" className="flex items-center gap-1">
-            <Link href={base} className="hover:text-foreground">
-              Projects
-            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mr-2 shadow-xs"
+              render={<Link href={base} />}
+              nativeButton={false}
+            >
+              <ArrowLeftIcon />
+              Back to projects
+            </Button>
             <ChevronRightIcon className="size-3" aria-hidden="true" />
             <Link
               href={`${base}?f.department=${project.department_id}`}
@@ -154,22 +166,65 @@ export default async function ProjectPage({
           </>
         }
         actions={
-          canEdit && (
-            <>
-              <Button
-                variant="outline"
-                render={<Link href={`${base}/${id}/edit`} />}
-                nativeButton={false}
-              >
-                <PencilIcon />
-                Edit
-              </Button>
-              <ProjectMenu slug={slug} projectId={id} projectName={project.name} />
-            </>
-          )
+          <>
+            {canEdit && (
+              <>
+                <Button
+                  variant="outline"
+                  render={<Link href={`${base}/${id}/edit`} />}
+                  nativeButton={false}
+                >
+                  <PencilIcon />
+                  Edit
+                </Button>
+                <ProjectMenu slug={slug} projectId={id} projectName={project.name} />
+              </>
+            )}
+          </>
         }
       />
-      <PageBody>
+      <PageBody className="flex flex-col gap-6">
+        <dl className="panel grid grid-cols-2 gap-x-6 gap-y-4 px-4 py-4 sm:grid-cols-3 md:px-5 xl:grid-cols-6">
+          <DetailChip label="Status">
+            <ProjectStatusBadge status={project.status as ProjectStatus} />
+          </DetailChip>
+          <DetailChip label="Owner" muted={!owner}>
+            {personLabel(owner)}
+          </DetailChip>
+          <DetailChip label="Department">
+            {department?.name ?? "—"}
+            {department?.archived && (
+              <span className="ml-1 text-xs font-normal text-muted-foreground">(archived)</span>
+            )}
+          </DetailChip>
+          <DetailChip label="Start" muted={!project.start_date}>
+            {project.start_date ? fmt(project.start_date) : "—"}
+          </DetailChip>
+          <DetailChip
+            label="Due"
+            muted={!project.due_date}
+            alert={
+              project.status === "active" && project.due_date !== null && project.due_date < today
+            }
+          >
+            {project.due_date ? fmt(project.due_date) : "—"}
+          </DetailChip>
+          <DetailChip label="Next milestone" muted={!upcoming}>
+            {upcoming ? (
+              <>
+                {upcoming.name}
+                {upcoming.due_date && (
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    · {fmt(upcoming.due_date)}
+                  </span>
+                )}
+              </>
+            ) : (
+              "None open"
+            )}
+          </DetailChip>
+        </dl>
+
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="flex min-w-0 flex-col gap-6">
             {project.description ? (
@@ -187,6 +242,23 @@ export default async function ProjectPage({
                 </p>
               )
             )}
+
+            <UpdatesPanel
+              slug={slug}
+              projectId={id}
+              canEdit={canEdit}
+              updates={updates.map((u) => ({
+                id: u.id,
+                authorName:
+                  memberLabel(members.find((m) => m.userId === u.author_id)) || "A former member",
+                body: u.body,
+                nextStep: u.next_step,
+                when: timeAgo(u.created_at, now, workspace.timezone),
+                whenExact: formatDateTime(u.created_at, workspace.timezone),
+                edited:
+                  new Date(u.updated_at).getTime() - new Date(u.created_at).getTime() > 60_000,
+              }))}
+            />
 
             <section aria-labelledby="tasks-heading" className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -233,36 +305,6 @@ export default async function ProjectPage({
           </div>
 
           <aside className="flex flex-col gap-6">
-            <Panel title="Details" bodyClassName="px-4 pb-4 md:px-5">
-              <dl className="grid grid-cols-[96px_1fr] gap-y-2.5 text-sm">
-                <dt className="text-muted-foreground">Status</dt>
-                <dd>
-                  <ProjectStatusBadge status={project.status as ProjectStatus} />
-                </dd>
-                <dt className="text-muted-foreground">Owner</dt>
-                <dd className={owner ? "text-foreground" : "text-muted-foreground"}>
-                  {personLabel(owner)}
-                </dd>
-                <dt className="text-muted-foreground">Department</dt>
-                <dd className="text-foreground">
-                  {department?.name ?? "—"}
-                  {department?.archived && (
-                    <span className="ml-1 text-xs text-muted-foreground">(archived)</span>
-                  )}
-                </dd>
-                <dt className="text-muted-foreground">Start</dt>
-                <dd className="text-foreground">
-                  {project.start_date ? fmt(project.start_date) : "—"}
-                </dd>
-                <dt className="text-muted-foreground">Due</dt>
-                <dd className="text-foreground">
-                  {project.due_date ? fmt(project.due_date) : "—"}
-                </dd>
-                <dt className="text-muted-foreground">Created</dt>
-                <dd className="text-foreground">{fmt(project.created_at)}</dd>
-              </dl>
-            </Panel>
-
             <Panel
               title="Activity"
               description="Everything that changed, newest first."
@@ -280,9 +322,38 @@ export default async function ProjectPage({
                 }))}
               />
             </Panel>
+            <p className="px-1 text-xs text-muted-foreground">Created {fmt(project.created_at)}</p>
           </aside>
         </div>
       </PageBody>
     </>
+  );
+}
+
+/** One labeled fact in the details strip. */
+function DetailChip({
+  label,
+  muted,
+  alert,
+  children,
+}: {
+  label: string;
+  muted?: boolean;
+  alert?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd
+        className={cn(
+          "truncate text-sm font-medium",
+          muted ? "text-muted-foreground" : "text-foreground",
+          alert && "text-health-off-track",
+        )}
+      >
+        {children}
+      </dd>
+    </div>
   );
 }

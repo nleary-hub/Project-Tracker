@@ -95,6 +95,31 @@ export function ProjectsTable(props: ProjectsTableProps) {
         defaultWidth: 120,
       },
       {
+        id: "latestUpdate",
+        header: "Latest update",
+        kind: "text",
+        accessor: (p) => p.latestUpdate?.body ?? null,
+        cell: (p) =>
+          p.latestUpdate ? (
+            <span
+              title={
+                p.latestUpdate.next_step
+                  ? `${p.latestUpdate.body}\nNext step: ${p.latestUpdate.next_step}`
+                  : p.latestUpdate.body
+              }
+            >
+              <span className="text-muted-foreground">
+                {formatDate(p.latestUpdate.created_at, timeZone)} ·{" "}
+              </span>
+              {p.latestUpdate.body}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">No update yet</span>
+          ),
+        defaultWidth: 260,
+        sortable: false,
+      },
+      {
         id: "nextMilestone",
         header: "Next milestone",
         kind: "text",

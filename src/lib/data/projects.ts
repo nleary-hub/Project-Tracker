@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { latestUpdatesForWorkspace, type ProjectUpdateRow } from "@/lib/data/project-updates";
 import { type MilestoneLike, nextMilestone } from "@/lib/milestones";
 import type { ProjectStatus } from "@/lib/projects";
 import type { Database, Tables } from "@/lib/supabase/database.types";
@@ -37,6 +38,8 @@ export interface ProjectListItem extends ProjectRow {
   status: ProjectStatus;
   nextMilestone: MilestoneLike | null;
   openMilestones: number;
+  /** The newest owner-written update (docs/PLAN.md D7), or null. */
+  latestUpdate: ProjectUpdateRow | null;
 }
 
 export async function getDepartments(
@@ -62,7 +65,7 @@ export async function listProjects(
   supabase: SupabaseClient<Database>,
   workspaceId: string,
 ): Promise<ProjectListItem[]> {
-  const [{ data: projects, error }, { data: milestones }] = await Promise.all([
+  const [{ data: projects, error }, { data: milestones }, latestUpdates] = await Promise.all([
     supabase
       .from("projects")
       .select(
@@ -75,6 +78,7 @@ export async function listProjects(
       .select("id, project_id, name, due_date, completed_at, rank")
       .eq("workspace_id", workspaceId)
       .is("completed_at", null),
+    latestUpdatesForWorkspace(supabase, workspaceId),
   ]);
   if (error) throw error;
 
@@ -87,7 +91,12 @@ export async function listProjects(
 
   return projects.map((p) => {
     const open = byProject.get(p.id) ?? [];
-    return { ...p, nextMilestone: nextMilestone(open), openMilestones: open.length };
+    return {
+      ...p,
+      nextMilestone: nextMilestone(open),
+      openMilestones: open.length,
+      latestUpdate: latestUpdates.get(p.id) ?? null,
+    };
   });
 }
 

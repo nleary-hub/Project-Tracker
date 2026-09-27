@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { DND_TYPES } from "./types";
+import { DND_TYPES, type GroupStyle } from "./types";
 
 export interface RowResizeHandlers {
   onPointerDown: (event: React.PointerEvent) => void;
@@ -21,6 +21,7 @@ export function DataRow<Item>({
   groupId,
   height,
   canDrag,
+  nested,
   dragLabel,
   resize,
   transition,
@@ -30,6 +31,8 @@ export function DataRow<Item>({
   groupId: string;
   height: number;
   canDrag: boolean;
+  /** Indented under its group header, with a guide line (tasks under a milestone). */
+  nested: boolean;
   dragLabel: string;
   resize: RowResizeHandlers | null;
   transition: { duration: number; easing: string } | null;
@@ -70,7 +73,13 @@ export function DataRow<Item>({
         <td
           key={cell.id}
           data-col={cell.column.id}
-          className={cn("relative p-0 align-middle", index === 0 && "pl-6")}
+          className={cn(
+            "relative p-0 align-middle",
+            index === 0 && (nested ? "pl-11" : "pl-6"),
+            index === 0 &&
+              nested &&
+              "before:absolute before:inset-y-0 before:left-4 before:w-px before:bg-border",
+          )}
           style={{ width: cell.column.getSize(), height }}
         >
           {index === 0 && canDrag && (
@@ -81,7 +90,10 @@ export function DataRow<Item>({
               {...listeners}
               aria-label={dragLabel}
               data-testid="row-drag-handle"
-              className="absolute top-1/2 left-1 flex size-5 -translate-y-1/2 cursor-grab items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity outline-none group-hover/row:opacity-100 hover:bg-muted focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 active:cursor-grabbing"
+              className={cn(
+                "absolute top-1/2 flex size-5 -translate-y-1/2 cursor-grab items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity outline-none group-hover/row:opacity-100 hover:bg-muted focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 active:cursor-grabbing",
+                nested ? "left-6" : "left-1",
+              )}
             >
               <GripVerticalIcon className="size-3.5" />
             </button>
@@ -116,6 +128,8 @@ export function DataRow<Item>({
 
 export function GroupHeaderRow({
   groupId,
+  groupStyle,
+  isFirst,
   label,
   note,
   count,
@@ -128,6 +142,9 @@ export function GroupHeaderRow({
   children,
 }: {
   groupId: string;
+  groupStyle: GroupStyle;
+  /** The first group needs no break above it; the table header is already there. */
+  isFirst: boolean;
   label: string;
   note?: string;
   count: number;
@@ -167,7 +184,13 @@ export function GroupHeaderRow({
       data-group-header={groupId}
       data-testid="group-header"
       className={cn(
-        "bg-muted/30 transition-colors [&>th]:border-b [&>th]:border-border/60",
+        "transition-colors [&>th]:border-b",
+        groupStyle === "section" && "bg-muted/60 [&>th]:h-11 [&>th]:border-border",
+        // A band of page background plus a hairline: each department reads as its own block.
+        groupStyle === "section" &&
+          !isFirst &&
+          "[&>th]:border-t-8 [&>th]:border-t-background [&>th]:shadow-[inset_0_1px_0_var(--border)]",
+        groupStyle === "nested" && "bg-card [&>th]:h-10 [&>th]:border-border/60",
         dropTarget && "bg-brand-soft",
         isDragging && "opacity-60",
       )}
@@ -176,7 +199,7 @@ export function GroupHeaderRow({
         transition: dndTransition,
       }}
     >
-      <th scope="rowgroup" colSpan={colSpan} className="h-10 px-2 text-left font-normal">
+      <th scope="rowgroup" colSpan={colSpan} className="px-2 text-left font-normal">
         <div className="flex items-center gap-2">
           {canDrag && (
             <button
@@ -191,7 +214,20 @@ export function GroupHeaderRow({
               <GripVerticalIcon className="size-3.5" />
             </button>
           )}
-          <span className="text-[13px] font-semibold text-foreground">{label}</span>
+          {groupStyle === "nested" && (
+            <span
+              aria-hidden="true"
+              className="ml-[11px] size-2 rotate-45 rounded-[2px] bg-brand/70"
+            />
+          )}
+          <span
+            className={cn(
+              "font-semibold text-foreground",
+              groupStyle === "section" ? "text-sm" : "text-[13px]",
+            )}
+          >
+            {label}
+          </span>
           {note && (
             <span className="rounded-md bg-muted px-1.5 py-px text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
               {note}

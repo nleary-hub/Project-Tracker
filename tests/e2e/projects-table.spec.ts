@@ -29,7 +29,7 @@ async function rowNames(page: Page, group: string): Promise<string[]> {
 }
 
 async function headerNames(page: Page): Promise<string[]> {
-  return page.locator("thead th[data-col] button > span").allInnerTexts();
+  return page.locator('thead th[data-col] [data-testid="column-sort"] > span').allInnerTexts();
 }
 
 function row(page: Page, name: string): Locator {
@@ -134,8 +134,9 @@ test.describe("projects table", () => {
   test("drags a column header and the order survives a reload", async ({ page }) => {
     const headers = await headerNames(page);
     expect(headers.slice(0, 2)).toEqual(["Project", "Owner"]);
-    const owner = page.locator('thead th[data-col="owner"] button').first();
-    const project = page.locator('thead th[data-col="name"] button').first();
+    await page.locator('thead th[data-col="owner"]').hover();
+    const owner = page.locator('thead th[data-col="owner"]').getByTestId("column-drag-handle");
+    const project = page.locator('thead th[data-col="name"]').getByTestId("column-sort");
     const from = await owner.boundingBox();
     const to = await project.boundingBox();
     await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2);
@@ -160,7 +161,7 @@ test.describe("projects table", () => {
   });
 
   test("sorts from the header and keeps the sort in the URL", async ({ page }) => {
-    await page.locator('thead th[data-col="name"] button').first().click();
+    await page.locator('thead th[data-col="name"]').getByTestId("column-sort").click();
     await expect(page.locator('thead th[data-col="name"]')).toHaveAttribute(
       "aria-sort",
       "ascending",
@@ -169,9 +170,9 @@ test.describe("projects table", () => {
     await expect
       .poll(() => rowNames(page, "Alpha"))
       .toEqual(["Alpha One", "Alpha Three", "Alpha Two"]);
-    await page.locator('thead th[data-col="name"] button').first().click();
+    await page.locator('thead th[data-col="name"]').getByTestId("column-sort").click();
     await expect(page).toHaveURL(/sort=-name/);
-    await page.locator('thead th[data-col="name"] button').first().click();
+    await page.locator('thead th[data-col="name"]').getByTestId("column-sort").click();
     await expect(page).not.toHaveURL(/sort=/);
   });
 

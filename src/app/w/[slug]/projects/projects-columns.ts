@@ -8,6 +8,7 @@ export const PROJECT_COLUMNS: readonly FilterColumnMeta[] = [
   { id: "name", kind: "text" },
   { id: "owner", kind: "enum" },
   { id: "status", kind: "enum" },
+  { id: "latestUpdate", kind: "text" },
   { id: "nextMilestone", kind: "text" },
   { id: "nextDue", kind: "date" },
   { id: "due", kind: "date" },

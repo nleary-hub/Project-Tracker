@@ -8,11 +8,12 @@ import {
   ArrowUpIcon,
   EyeOffIcon,
   FilterIcon,
+  GripVerticalIcon,
   MoreHorizontalIcon,
   RulerIcon,
   XIcon,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -67,11 +68,11 @@ export function HeaderCell<Item, Row>({
   transition,
 }: HeaderCellProps<Item, Row>) {
   const [filterOpen, setFilterOpen] = useState(false);
-  const dragged = useRef(false);
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     isDragging,
     transition: dndTransition,
@@ -104,35 +105,32 @@ export function HeaderCell<Item, Row>({
       }}
     >
       <div className="flex h-full items-center">
+        {/* Dragging and sorting are separate controls, like rows and groups:
+            the grip moves the column, the label sorts it. */}
+        {canReorder && (
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
+            {...attributes}
+            {...listeners}
+            aria-label={`Drag to reorder the ${column.header} column`}
+            title="Drag to reorder"
+            data-testid="column-drag-handle"
+            className="ml-1 flex h-6 w-4 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground/50 transition-colors outline-none group-hover/th:text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:cursor-grabbing"
+          >
+            <GripVerticalIcon className="size-3.5" />
+          </button>
+        )}
         <button
           type="button"
-          {...attributes}
-          {...listeners}
-          onPointerDown={(e) => {
-            dragged.current = false;
-            listeners?.onPointerDown?.(e);
-          }}
-          onPointerMove={() => {
-            dragged.current = true;
-          }}
-          onClick={(e) => {
-            if (dragged.current || !sortable) return;
-            onSortClick(e);
-          }}
-          onKeyDown={(e) => {
-            // Space/Enter sort; dnd-kit's keyboard sensor takes over once a drag starts.
-            if ((e.key === "Enter" || e.key === " ") && sortable && !e.shiftKey) {
-              e.preventDefault();
-              onSortClick(e as unknown as React.MouseEvent);
-              return;
-            }
-            listeners?.onKeyDown?.(e);
-          }}
-          aria-label={`${column.header}${sortable ? ", sort" : ""}${canReorder ? ", drag to reorder" : ""}`}
+          data-testid="column-sort"
+          disabled={!sortable}
+          onClick={onSortClick}
+          aria-label={`${column.header}${sortable ? ", sort" : ""}`}
           className={cn(
-            "flex h-full min-w-0 flex-1 items-center gap-1 px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset",
+            "flex h-full min-w-0 flex-1 items-center gap-1 px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset disabled:cursor-default",
+            canReorder && "pl-1",
             column.align === "right" && "justify-end",
-            canReorder && "cursor-grab active:cursor-grabbing",
           )}
         >
           <span className="truncate">{column.header}</span>
@@ -226,9 +224,11 @@ export function HeaderCell<Item, Row>({
           onMouseDown={header.getResizeHandler()}
           onTouchStart={header.getResizeHandler()}
           onDoubleClick={onAutoFit}
+          title="Drag to resize · double-click to fit"
           className={cn(
-            "absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize touch-none select-none",
-            "after:absolute after:inset-y-2.5 after:right-0.5 after:w-px after:bg-border/70 group-hover/th:after:bg-muted-foreground",
+            "absolute top-0 right-0 z-10 h-full w-3 cursor-col-resize touch-none select-none",
+            "after:absolute after:inset-y-1.5 after:right-1 after:w-[2px] after:rounded-full after:bg-border after:transition-colors",
+            "hover:after:bg-brand/70",
             header.column.getIsResizing() && "after:bg-brand",
           )}
         />

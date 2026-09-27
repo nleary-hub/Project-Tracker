@@ -128,6 +128,25 @@ superseded rather than merged.
   - Verified in the browser: quick-add → task appears, status menu → In progress, checkbox →
     Done, each logged in the activity feed; dark mode, phone layout and the login page.
 
+- **M5a — project updates + table/page polish** on branch `m5/project-updates-and-ux` (from
+  the `design/refresh` tip), from Nick's 2026-09-26 change list:
+  - Migration `20260927002330_project_updates.sql`: `project_updates` (`author_id` → the
+    signed-in user who posted, `body`, optional `next_step`), `workspace_id` copied from the
+    project by trigger. RLS: members read; the project's owner or an admin posts, edits and
+    deletes; nobody posts in someone else's name. Deliberately separate from `activity_events`
+    (that log stays append-only and trigger-written).
+  - **Updates** panel on the project page (compose, feed with "Latest" badge and next step,
+    edit/delete); **Latest update** column on the projects list (`ProjectListItem.latestUpdate`
+    from `latestUpdatesForWorkspace()`). The report (M6) reads the same table.
+  - DataTable: columns get an explicit grip handle (drag) separate from the label (sort) and a
+    resize divider that is visible at rest; `groupStyle` prop — `"section"` (departments:
+    stronger band with a gap between groups) or `"nested"` (tasks indented under their
+    milestone with a guide line).
+  - Project page: **Back to projects** button, details as a full-width strip (status, owner,
+    department, start, due, next milestone) instead of a 320px sidebar box.
+  - Tests: `project-update` schema unit tests, pgTAP `project-updates.test.sql` (13 checks),
+    e2e selectors updated (`column-drag-handle`, `column-sort`).
+
 ## External services (all $0 plans)
 
 | Service            | Details                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -174,9 +193,10 @@ superseded rather than merged.
 
 ## Recommended next step
 
-Merge [PR #4](https://github.com/nleary-hub/Project-Tracker/pull/4) (M4a) and then the
-design-refresh PR (stacked on it), both with **Rebase and merge**, then start **M5 — project
-updates + health engine** on a fresh branch from `main` (PLAN §5, §12), building its screens
+Merge [PR #4](https://github.com/nleary-hub/Project-Tracker/pull/4) (M4a), then
+[PR #5](https://github.com/nleary-hub/Project-Tracker/pull/5) (design refresh), then the M5a
+PR stacked on it, all with **Rebase and merge**. Then continue **M5 — the health engine,
+override and in-app banner** (project updates are already in) on a fresh branch from `main` (PLAN §5, §12), building its screens
 in the refreshed design. Open a PR per milestone so CI (including the e2e job) runs before
 merge; merges need a human click in GitHub — the Claude Code app refuses to press the merge
 button itself.

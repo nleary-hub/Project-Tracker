@@ -107,6 +107,7 @@ import {
   type DataTableGroup,
   type DragData,
   type GroupMove,
+  type GroupStyle,
   type LastLayoutChange,
   type RowMove,
 } from "./types";
@@ -144,6 +145,8 @@ export interface DataTableProps<Row> {
   lastLayoutChange?: LastLayoutChange | null;
   renderCard: (row: Row) => ReactNode;
   emptyMessage: string;
+  /** How groups are drawn: "section" (default) or "nested" (rows indented). */
+  groupStyle?: GroupStyle;
   /** Ask before moving a row into another group (default true). */
   confirmGroupMove?: boolean;
   /** Toast shown when permissions.moveRowToGroup says no. */
@@ -196,6 +199,9 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
     onRowsReorder,
     onGroupMove,
   } = props;
+
+  const groupStyle = props.groupStyle ?? "section";
+  const nested = groupStyle === "nested";
 
   // A stable id keeps dnd-kit's aria-describedby identical on server and client.
   const dndId = useId();
@@ -1025,7 +1031,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
               items={groupOrder.map((id) => `group:${id}`)}
               strategy={verticalListSortingStrategy}
             >
-              {orderedGroups.map((group) => {
+              {orderedGroups.map((group, groupIndex) => {
                 const rows = rowsByGroup.get(group.id) ?? [];
                 const collapsed = active?.type === DND_TYPES.group && active.groupId === group.id;
                 const isDropTarget =
@@ -1036,6 +1042,8 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
                   <tbody key={group.id} data-group={group.id}>
                     <GroupHeaderRow
                       groupId={group.id}
+                      groupStyle={groupStyle}
+                      isFirst={groupIndex === 0}
                       label={group.label}
                       note={group.note}
                       count={rows.length}
@@ -1055,7 +1063,10 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
                           <tr>
                             <td
                               colSpan={visibleColumnIds.length}
-                              className="px-3 py-2 text-xs text-muted-foreground"
+                              className={cn(
+                                "py-2 pr-3 text-xs text-muted-foreground",
+                                nested ? "pl-11" : "pl-3",
+                              )}
                               style={{ height: rowHeight }}
                             >
                               {filtering
@@ -1071,6 +1082,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
                               groupId={group.id}
                               height={rowHeight}
                               canDrag={permissions.reorderRows}
+                              nested={nested}
                               dragLabel={`Drag to reorder ${getRowLabel(r.original.row)}`}
                               resize={rowResize}
                               transition={transition}

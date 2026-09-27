@@ -194,6 +194,7 @@ export function TasksTable(props: TasksTableProps) {
         dates={dates}
         permissions={permissions}
         lastLayoutChange={props.lastLayoutChange}
+        groupStyle="nested"
         confirmGroupMove={false}
         emptyMessage="No tasks yet."
         renderCard={(t) => (

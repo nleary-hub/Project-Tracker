@@ -49,6 +49,13 @@ export interface DataTableGroup<Row> {
   note?: string;
 }
 
+/**
+ * How groups are drawn. "section": a top-level block with a break between
+ * groups (departments). "nested": a sub-heading with its rows indented
+ * beneath it (tasks under a milestone).
+ */
+export type GroupStyle = "section" | "nested";
+
 export interface RowMove {
   rowId: string;
   fromGroupId: string;

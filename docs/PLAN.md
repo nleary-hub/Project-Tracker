@@ -93,8 +93,11 @@ All tables carry `workspace_id` and are protected by RLS through an
 - **tasks** — `project_id`, `milestone_id` (optional), `title`, `description`,
   `status` (todo | in_progress | blocked | done), `priority` (low | medium | high | urgent),
   `assignee_id` (→ people), `due_date`, `completed_at` (kept in step with `status` by trigger), `rank`
-- **project_updates** — `project_id`, `author_id`, `body`, `next_step` (optional text),
-  `created_at`. Edits are allowed until the next report snapshot is taken.
+- **project_updates** — `project_id`, `author_id` (the signed-in user who posted it),
+  `body`, `next_step` (optional text), `created_at`, `updated_at`. Posted, edited and deleted
+  by the project's owner or an admin; read by every member. Edits are allowed until the next
+  report snapshot is taken (enforced from M6, when snapshots exist). The newest update is the
+  "Latest update" on the projects list and in the report.
 - **activity_events** — `project_id`, `actor_id`, `kind` (project_created / status_changed /
   owner_changed / department_changed / health_overridden; milestone_created / completed / reopened /
   date_changed / deleted; task_created / completed / reopened / status_changed / assigned /
